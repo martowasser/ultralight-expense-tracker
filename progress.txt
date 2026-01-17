@@ -322,3 +322,21 @@ Started: Fri Jan 16 23:20:34 -03 2026
   - useEffect with async function inside for fetching data on modal open
   - Track amounts separately from expenses using Record<string, string> for controlled inputs
 ---
+
+## 2026-01-17 - US-016
+- What was implemented:
+  - Created ExpenseTotals component displaying paid, unpaid, and grand totals
+  - Added useMemo hook to calculate totals from expenses array in ExpenseSection
+  - Totals formatted as currency using Intl.NumberFormat (e.g., $1,234.56)
+  - Color-coded totals: green for paid, yellow for unpaid, gray for grand total
+  - Totals automatically update when expenses are added, edited, deleted, or marked as paid (via router.refresh)
+- Files changed:
+  - src/components/ExpenseTotals.tsx (created)
+  - src/components/ExpenseSection.tsx (added totals calculation and ExpenseTotals component)
+  - prd.json (marked US-016 as passes: true)
+- **Learnings for future iterations:**
+  - Use useMemo for derived calculations from props to avoid recalculation on every render
+  - Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }) for proper currency formatting
+  - parseFloat() needed to convert Prisma Decimal string amounts back to numbers for math
+  - Totals update automatically since ExpenseSection receives fresh expenses prop after router.refresh()
+---

@@ -244,6 +244,58 @@
       "priority": 15,
       "passes": true,
       "notes": ""
+    },
+    {
+      "id": "US-016",
+      "title": "Display monthly expense totals",
+      "description": "As a user, I want to see the total amount for paid expenses, unpaid expenses, and the combined total for the current month.",
+      "acceptanceCriteria": [
+        "Dashboard shows total for paid expenses (sum of all isPaid=true)",
+        "Dashboard shows total for unpaid expenses (sum of all isPaid=false)",
+        "Dashboard shows combined grand total (paid + unpaid)",
+        "Totals update when expenses are added, edited, deleted, or marked as paid",
+        "Totals formatted as currency (e.g., $1,234.56)",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 16,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-017",
+      "title": "Fully responsive mobile experience",
+      "description": "As a user, I want the app to be fully responsive so I can use it comfortably on mobile devices.",
+      "acceptanceCriteria": [
+        "All pages adapt to mobile screen sizes (320px and up)",
+        "Navigation is mobile-friendly (hamburger menu or similar)",
+        "Expense list is readable and usable on small screens",
+        "Forms and modals work well on touch devices",
+        "Buttons and touch targets are at least 44px for accessibility",
+        "No horizontal scrolling on mobile viewports",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill at mobile viewport"
+      ],
+      "priority": 17,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-018",
+      "title": "Add Login/Register buttons on home page",
+      "description": "As a user, I want to see Login and Register buttons on the home page so I can easily access authentication.",
+      "acceptanceCriteria": [
+        "Home page (/) displays a Login button",
+        "Home page (/) displays a Register button",
+        "Login button navigates to /login",
+        "Register button navigates to /register",
+        "Buttons are clearly visible and styled consistently",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 18,
+      "passes": false,
+      "notes": ""
     }
   ]
 }
