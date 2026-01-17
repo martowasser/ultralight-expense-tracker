@@ -277,3 +277,24 @@ Started: Fri Jan 16 23:20:34 -03 2026
   - Confirmation modals should show the item name to prevent accidental deletions
   - Pattern: Simple delete flow uses only expenseId since cascade handles related records
 ---
+
+## 2026-01-17 - US-014
+- What was implemented:
+  - Created togglePaid server action to update isPaid status on MonthlyExpense
+  - Server action validates ownership before updating (security check)
+  - Added checkbox to each expense row in ExpenseList component
+  - Checkbox toggles isPaid status via handleTogglePaid in ExpenseSection
+  - Visual indication: paid expenses show strikethrough on name and amount
+  - Visual indication: paid expenses have green background row and checkmark
+  - Disabled state on checkbox while toggling to prevent double-clicks
+  - Change persists after router.refresh() refetches server data
+- Files changed:
+  - src/app/dashboard/actions.ts (added togglePaid action, TogglePaidInput/Result types)
+  - src/components/ExpenseList.tsx (added checkbox, strikethrough styling, onTogglePaid/togglingId props)
+  - src/components/ExpenseSection.tsx (added handleTogglePaid, togglingId state, passed props to ExpenseList)
+  - prd.json (marked US-014 as passes: true)
+- **Learnings for future iterations:**
+  - Toggle actions only need monthlyExpenseId since isPaid is per-month (not on Expense table)
+  - Use conditional className with template literals for dynamic styling based on state
+  - Disable form elements while async operations are in progress to prevent double-submissions
+---
