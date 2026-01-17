@@ -286,3 +286,143 @@ export async function getMonthlyExpenses(month: string): Promise<MonthlyExpenseW
     },
   }));
 }
+
+export interface PreviousMonthExpense {
+  expenseId: string;
+  name: string;
+  amount: string;
+  dueDay: number;
+}
+
+export async function getPreviousMonthExpenses(currentMonth: string): Promise<PreviousMonthExpense[]> {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    return [];
+  }
+
+  // Calculate previous month
+  const [year, month] = currentMonth.split("-").map(Number);
+  const prevDate = new Date(year, month - 2, 1); // month is 0-indexed, so subtract 2
+  const prevMonth = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, "0")}`;
+
+  const expenses = await prisma.monthlyExpense.findMany({
+    where: {
+      userId: session.user.id,
+      month: prevMonth,
+    },
+    include: {
+      expense: {
+        select: {
+          id: true,
+          name: true,
+          dueDay: true,
+        },
+      },
+    },
+    orderBy: {
+      expense: {
+        dueDay: "asc",
+      },
+    },
+  });
+
+  return expenses.map((e) => ({
+    expenseId: e.expenseId,
+    name: e.expense.name,
+    amount: e.amount.toString(),
+    dueDay: e.expense.dueDay,
+  }));
+}
+
+export interface CloneExpenseItem {
+  expenseId: string;
+  amount: number;
+}
+
+export interface CloneExpensesInput {
+  targetMonth: string;
+  expenses: CloneExpenseItem[];
+}
+
+export interface CloneExpensesResult {
+  success: boolean;
+  error?: string;
+}
+
+export async function cloneExpenses(input: CloneExpensesInput): Promise<CloneExpensesResult> {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  if (!input.targetMonth || !/^\d{4}-\d{2}$/.test(input.targetMonth)) {
+    return { success: false, error: "Invalid month format" };
+  }
+
+  if (!input.expenses || input.expenses.length === 0) {
+    return { success: false, error: "No expenses to clone" };
+  }
+
+  // Validate all amounts are positive
+  for (const exp of input.expenses) {
+    if (typeof exp.amount !== "number" || exp.amount <= 0) {
+      return { success: false, error: "All amounts must be positive numbers" };
+    }
+  }
+
+  try {
+    // Verify ownership of all expenses
+    const expenseIds = input.expenses.map((e) => e.expenseId);
+    const ownedExpenses = await prisma.expense.findMany({
+      where: {
+        id: { in: expenseIds },
+        userId: session.user.id,
+      },
+    });
+
+    if (ownedExpenses.length !== expenseIds.length) {
+      return { success: false, error: "Some expenses not found or not owned by user" };
+    }
+
+    // Create MonthlyExpense records for target month in a transaction
+    await prisma.$transaction(async (tx) => {
+      for (const exp of input.expenses) {
+        // Check if MonthlyExpense already exists for this expense and month
+        const existing = await tx.monthlyExpense.findUnique({
+          where: {
+            expenseId_month: {
+              expenseId: exp.expenseId,
+              month: input.targetMonth,
+            },
+          },
+        });
+
+        if (existing) {
+          // Update existing record with new amount
+          await tx.monthlyExpense.update({
+            where: { id: existing.id },
+            data: { amount: exp.amount },
+          });
+        } else {
+          // Create new MonthlyExpense
+          await tx.monthlyExpense.create({
+            data: {
+              userId: session.user!.id!,
+              expenseId: exp.expenseId,
+              month: input.targetMonth,
+              amount: exp.amount,
+              isPaid: false,
+            },
+          });
+        }
+      }
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error cloning expenses:", error);
+    return { success: false, error: "Failed to clone expenses" };
+  }
+}
