@@ -5,9 +5,11 @@ interface ExpenseListProps {
   displayMonth: string;
   onEdit: (expense: MonthlyExpenseWithExpense) => void;
   onDelete: (expense: MonthlyExpenseWithExpense) => void;
+  onTogglePaid: (expense: MonthlyExpenseWithExpense) => void;
+  togglingId: string | null;
 }
 
-export default function ExpenseList({ expenses, displayMonth, onEdit, onDelete }: ExpenseListProps) {
+export default function ExpenseList({ expenses, displayMonth, onEdit, onDelete, onTogglePaid, togglingId }: ExpenseListProps) {
   if (expenses.length === 0) {
     return (
       <div className="bg-white rounded-lg shadow p-6 text-center">
@@ -42,44 +44,50 @@ export default function ExpenseList({ expenses, displayMonth, onEdit, onDelete }
           </tr>
         </thead>
         <tbody className="bg-white divide-y divide-gray-200">
-          {expenses.map((expense) => (
-            <tr key={expense.id}>
-              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                {expense.expense.name}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                ${parseFloat(expense.amount).toFixed(2)}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {expense.expense.dueDay}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm">
-                {expense.isPaid ? (
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                    Paid
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                    Pending
-                  </span>
-                )}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm space-x-3">
-                <button
-                  onClick={() => onEdit(expense)}
-                  className="text-blue-600 hover:text-blue-800 font-medium"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={() => onDelete(expense)}
-                  className="text-red-600 hover:text-red-800 font-medium"
-                >
-                  Delete
-                </button>
-              </td>
-            </tr>
-          ))}
+          {expenses.map((expense) => {
+            const isToggling = togglingId === expense.id;
+            return (
+              <tr key={expense.id} className={expense.isPaid ? "bg-green-50" : ""}>
+                <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${expense.isPaid ? "text-gray-500 line-through" : "text-gray-900"}`}>
+                  {expense.expense.name}
+                </td>
+                <td className={`px-6 py-4 whitespace-nowrap text-sm ${expense.isPaid ? "text-gray-400 line-through" : "text-gray-500"}`}>
+                  ${parseFloat(expense.amount).toFixed(2)}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {expense.expense.dueDay}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                  <label className="inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={expense.isPaid}
+                      onChange={() => onTogglePaid(expense)}
+                      disabled={isToggling}
+                      className="h-5 w-5 text-green-600 border-gray-300 rounded focus:ring-green-500 cursor-pointer disabled:cursor-wait"
+                    />
+                    <span className={`ml-2 ${expense.isPaid ? "text-green-700 font-medium" : "text-gray-600"}`}>
+                      {expense.isPaid ? "✓ Paid" : "Pending"}
+                    </span>
+                  </label>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm space-x-3">
+                  <button
+                    onClick={() => onEdit(expense)}
+                    className="text-blue-600 hover:text-blue-800 font-medium"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => onDelete(expense)}
+                    className="text-red-600 hover:text-red-800 font-medium"
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>

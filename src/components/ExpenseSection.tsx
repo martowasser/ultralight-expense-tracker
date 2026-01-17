@@ -6,7 +6,7 @@ import ExpenseList from "./ExpenseList";
 import AddExpenseModal from "./AddExpenseModal";
 import EditExpenseModal from "./EditExpenseModal";
 import DeleteConfirmModal from "./DeleteConfirmModal";
-import { MonthlyExpenseWithExpense, deleteExpense } from "@/app/dashboard/actions";
+import { MonthlyExpenseWithExpense, deleteExpense, togglePaid } from "@/app/dashboard/actions";
 
 interface ExpenseSectionProps {
   expenses: MonthlyExpenseWithExpense[];
@@ -23,6 +23,7 @@ export default function ExpenseSection({
   const [editingExpense, setEditingExpense] = useState<MonthlyExpenseWithExpense | null>(null);
   const [deletingExpense, setDeletingExpense] = useState<MonthlyExpenseWithExpense | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
   const router = useRouter();
 
   const handleAddSuccess = () => {
@@ -58,6 +59,21 @@ export default function ExpenseSection({
     }
   };
 
+  const handleTogglePaid = async (expense: MonthlyExpenseWithExpense) => {
+    setTogglingId(expense.id);
+    const result = await togglePaid({
+      monthlyExpenseId: expense.id,
+      isPaid: !expense.isPaid,
+    });
+    setTogglingId(null);
+
+    if (result.success) {
+      router.refresh();
+    } else {
+      alert(result.error || "Failed to update paid status");
+    }
+  };
+
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
@@ -75,6 +91,8 @@ export default function ExpenseSection({
         displayMonth={displayMonth}
         onEdit={handleEdit}
         onDelete={handleDelete}
+        onTogglePaid={handleTogglePaid}
+        togglingId={togglingId}
       />
 
       {isAddModalOpen && (

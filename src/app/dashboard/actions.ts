@@ -159,6 +159,50 @@ export async function updateExpense(input: UpdateExpenseInput): Promise<UpdateEx
   }
 }
 
+export interface TogglePaidInput {
+  monthlyExpenseId: string;
+  isPaid: boolean;
+}
+
+export interface TogglePaidResult {
+  success: boolean;
+  error?: string;
+}
+
+export async function togglePaid(input: TogglePaidInput): Promise<TogglePaidResult> {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  if (!input.monthlyExpenseId) {
+    return { success: false, error: "Monthly expense ID is required" };
+  }
+
+  try {
+    // Verify ownership before updating
+    const monthlyExpense = await prisma.monthlyExpense.findUnique({
+      where: { id: input.monthlyExpenseId },
+    });
+
+    if (!monthlyExpense || monthlyExpense.userId !== session.user.id) {
+      return { success: false, error: "Monthly expense not found" };
+    }
+
+    // Update the isPaid status
+    await prisma.monthlyExpense.update({
+      where: { id: input.monthlyExpenseId },
+      data: { isPaid: input.isPaid },
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error toggling paid status:", error);
+    return { success: false, error: "Failed to update paid status" };
+  }
+}
+
 export interface DeleteExpenseInput {
   expenseId: string;
 }
