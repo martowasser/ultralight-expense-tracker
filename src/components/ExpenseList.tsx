@@ -4,9 +4,10 @@ interface ExpenseListProps {
   expenses: MonthlyExpenseWithExpense[];
   displayMonth: string;
   onEdit: (expense: MonthlyExpenseWithExpense) => void;
+  onDelete: (expense: MonthlyExpenseWithExpense) => void;
 }
 
-export default function ExpenseList({ expenses, displayMonth, onEdit }: ExpenseListProps) {
+export default function ExpenseList({ expenses, displayMonth, onEdit, onDelete }: ExpenseListProps) {
   if (expenses.length === 0) {
     return (
       <div className="bg-white rounded-lg shadow p-6 text-center">
@@ -63,12 +64,18 @@ export default function ExpenseList({ expenses, displayMonth, onEdit }: ExpenseL
                   </span>
                 )}
               </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm">
+              <td className="px-6 py-4 whitespace-nowrap text-sm space-x-3">
                 <button
                   onClick={() => onEdit(expense)}
                   className="text-blue-600 hover:text-blue-800 font-medium"
                 >
                   Edit
+                </button>
+                <button
+                  onClick={() => onDelete(expense)}
+                  className="text-red-600 hover:text-red-800 font-medium"
+                >
+                  Delete
                 </button>
               </td>
             </tr>

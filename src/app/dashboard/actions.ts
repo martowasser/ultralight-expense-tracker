@@ -159,6 +159,48 @@ export async function updateExpense(input: UpdateExpenseInput): Promise<UpdateEx
   }
 }
 
+export interface DeleteExpenseInput {
+  expenseId: string;
+}
+
+export interface DeleteExpenseResult {
+  success: boolean;
+  error?: string;
+}
+
+export async function deleteExpense(input: DeleteExpenseInput): Promise<DeleteExpenseResult> {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  if (!input.expenseId) {
+    return { success: false, error: "Expense ID is required" };
+  }
+
+  try {
+    // Verify ownership before deleting
+    const expense = await prisma.expense.findUnique({
+      where: { id: input.expenseId },
+    });
+
+    if (!expense || expense.userId !== session.user.id) {
+      return { success: false, error: "Expense not found" };
+    }
+
+    // Delete the expense - MonthlyExpense records will be cascade deleted
+    await prisma.expense.delete({
+      where: { id: input.expenseId },
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting expense:", error);
+    return { success: false, error: "Failed to delete expense" };
+  }
+}
+
 export async function getMonthlyExpenses(month: string): Promise<MonthlyExpenseWithExpense[]> {
   const session = await auth();
 

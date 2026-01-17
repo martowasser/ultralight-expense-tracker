@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import ExpenseList from "./ExpenseList";
 import AddExpenseModal from "./AddExpenseModal";
 import EditExpenseModal from "./EditExpenseModal";
-import { MonthlyExpenseWithExpense } from "@/app/dashboard/actions";
+import DeleteConfirmModal from "./DeleteConfirmModal";
+import { MonthlyExpenseWithExpense, deleteExpense } from "@/app/dashboard/actions";
 
 interface ExpenseSectionProps {
   expenses: MonthlyExpenseWithExpense[];
@@ -20,6 +21,8 @@ export default function ExpenseSection({
 }: ExpenseSectionProps) {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<MonthlyExpenseWithExpense | null>(null);
+  const [deletingExpense, setDeletingExpense] = useState<MonthlyExpenseWithExpense | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const router = useRouter();
 
   const handleAddSuccess = () => {
@@ -36,6 +39,25 @@ export default function ExpenseSection({
     setEditingExpense(expense);
   };
 
+  const handleDelete = (expense: MonthlyExpenseWithExpense) => {
+    setDeletingExpense(expense);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingExpense) return;
+
+    setIsDeleting(true);
+    const result = await deleteExpense({ expenseId: deletingExpense.expenseId });
+    setIsDeleting(false);
+
+    if (result.success) {
+      setDeletingExpense(null);
+      router.refresh();
+    } else {
+      alert(result.error || "Failed to delete expense");
+    }
+  };
+
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
@@ -48,7 +70,12 @@ export default function ExpenseSection({
         </button>
       </div>
 
-      <ExpenseList expenses={expenses} displayMonth={displayMonth} onEdit={handleEdit} />
+      <ExpenseList
+        expenses={expenses}
+        displayMonth={displayMonth}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+      />
 
       {isAddModalOpen && (
         <AddExpenseModal
@@ -63,6 +90,15 @@ export default function ExpenseSection({
           expense={editingExpense}
           onClose={() => setEditingExpense(null)}
           onSuccess={handleEditSuccess}
+        />
+      )}
+
+      {deletingExpense && (
+        <DeleteConfirmModal
+          expenseName={deletingExpense.expense.name}
+          isDeleting={isDeleting}
+          onClose={() => setDeletingExpense(null)}
+          onConfirm={handleConfirmDelete}
         />
       )}
     </div>
