@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import Header from "@/components/Header";
+import MonthNavigation from "@/components/MonthNavigation";
 
 function getCurrentMonth(): string {
   const now = new Date();
@@ -50,9 +51,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       <Header userEmail={session.user.email || ""} />
       <main className="max-w-7xl mx-auto px-6 py-8">
         <div className="mb-6">
-          <h2 className="text-2xl font-bold text-gray-900 text-center">
-            {displayMonth}
-          </h2>
+          <MonthNavigation currentMonth={selectedMonth} displayMonth={displayMonth} />
         </div>
         <p className="text-gray-600 text-center">
           Your expenses for {displayMonth} will appear here.
