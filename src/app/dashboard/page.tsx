@@ -52,8 +52,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   return (
     <div className="min-h-screen bg-gray-50">
       <Header userEmail={session.user.email || ""} />
-      <main className="max-w-7xl mx-auto px-6 py-8">
-        <div className="mb-6">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
+        <div className="mb-4 sm:mb-6">
           <MonthNavigation currentMonth={selectedMonth} displayMonth={displayMonth} />
         </div>
         <ExpenseSection expenses={expenses} currentMonth={selectedMonth} displayMonth={displayMonth} />

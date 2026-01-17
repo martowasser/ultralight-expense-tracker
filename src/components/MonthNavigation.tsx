@@ -39,10 +39,10 @@ export default function MonthNavigation({ currentMonth, displayMonth }: MonthNav
   };
 
   return (
-    <div className="flex items-center justify-center gap-4">
+    <div className="flex items-center justify-center gap-2 sm:gap-4">
       <button
         onClick={handlePrevious}
-        className="px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+        className="p-3 sm:px-4 sm:py-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
         aria-label="Previous month"
       >
         <svg
@@ -58,12 +58,12 @@ export default function MonthNavigation({ currentMonth, displayMonth }: MonthNav
           />
         </svg>
       </button>
-      <h2 className="text-2xl font-bold text-gray-900 min-w-[200px] text-center">
+      <h2 className="text-xl sm:text-2xl font-bold text-gray-900 min-w-[140px] sm:min-w-[200px] text-center">
         {displayMonth}
       </h2>
       <button
         onClick={handleNext}
-        className="px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+        className="p-3 sm:px-4 sm:py-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
         aria-label="Next month"
       >
         <svg
