@@ -257,3 +257,23 @@ Started: Fri Jan 16 23:20:34 -03 2026
   - Reuse modal patterns from add functionality - EditExpenseModal mirrors AddExpenseModal structure
   - Use useState with expense type (or null) to track which expense is being edited
 ---
+
+## 2026-01-17 - US-013
+- What was implemented:
+  - Created deleteExpense server action with ownership verification before deletion
+  - Added Delete button (red) next to Edit button in each expense row
+  - Created DeleteConfirmModal component with confirmation dialog
+  - ExpenseSection manages deletion state and calls deleteExpense on confirmation
+  - Cascade delete via Prisma ensures MonthlyExpense records are automatically removed
+  - List refreshes via router.refresh() after successful deletion
+- Files changed:
+  - src/app/dashboard/actions.ts (added deleteExpense action, DeleteExpenseInput/Result types)
+  - src/components/DeleteConfirmModal.tsx (created)
+  - src/components/ExpenseList.tsx (added Delete button, onDelete prop)
+  - src/components/ExpenseSection.tsx (integrated DeleteConfirmModal, added delete state management)
+  - prd.json (marked US-013 as passes: true)
+- **Learnings for future iterations:**
+  - Prisma onDelete: Cascade handles related record cleanup automatically - no need for manual transaction
+  - Confirmation modals should show the item name to prevent accidental deletions
+  - Pattern: Simple delete flow uses only expenseId since cascade handles related records
+---
