@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import Header from "@/components/Header";
 import MonthNavigation from "@/components/MonthNavigation";
-import ExpenseList from "@/components/ExpenseList";
+import ExpenseSection from "@/components/ExpenseSection";
 import { getMonthlyExpenses } from "./actions";
 
 function getCurrentMonth(): string {
@@ -56,7 +56,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         <div className="mb-6">
           <MonthNavigation currentMonth={selectedMonth} displayMonth={displayMonth} />
         </div>
-        <ExpenseList expenses={expenses} displayMonth={displayMonth} />
+        <ExpenseSection expenses={expenses} currentMonth={selectedMonth} displayMonth={displayMonth} />
       </main>
     </div>
   );
