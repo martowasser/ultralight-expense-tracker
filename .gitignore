@@ -23,3 +23,5 @@ dist/
 # Misc
 .DS_Store
 *.log
+
+/src/generated/prisma
