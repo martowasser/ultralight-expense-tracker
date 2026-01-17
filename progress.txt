@@ -298,3 +298,27 @@ Started: Fri Jan 16 23:20:34 -03 2026
   - Use conditional className with template literals for dynamic styling based on state
   - Disable form elements while async operations are in progress to prevent double-submissions
 ---
+
+## 2026-01-17 - US-015
+- What was implemented:
+  - Created getPreviousMonthExpenses server action to fetch expenses from previous month
+  - Created cloneExpenses server action to create MonthlyExpense records for target month
+  - Clone action handles existing records by updating amount (uses expenseId_month unique constraint)
+  - Created CloneExpensesModal component with:
+    - Lists all expenses from previous month
+    - Shows expense name, due day, previous amount
+    - Editable amount input field for each expense
+    - Confirm and Cancel buttons
+  - Added "Clone from Previous Month" button to ExpenseSection next to "Add Expense"
+  - Empty state message when no expenses exist in previous month
+- Files changed:
+  - src/app/dashboard/actions.ts (added getPreviousMonthExpenses, cloneExpenses actions, PreviousMonthExpense, CloneExpenseItem, CloneExpensesInput/Result types)
+  - src/components/CloneExpensesModal.tsx (created)
+  - src/components/ExpenseSection.tsx (added Clone button, CloneExpensesModal integration, isCloneModalOpen state)
+  - prd.json (marked US-015 as passes: true)
+- **Learnings for future iterations:**
+  - Use Prisma compound unique constraint (expenseId_month) for upsert-like logic in cloning
+  - Date math for previous month: new Date(year, month - 2, 1) where month is 1-indexed from URL param
+  - useEffect with async function inside for fetching data on modal open
+  - Track amounts separately from expenses using Record<string, string> for controlled inputs
+---
