@@ -1,0 +1,29 @@
+# Ralph Progress Log
+Started: Fri Jan 16 23:20:34 -03 2026
+---
+
+## Codebase Patterns
+- Next.js 16 with App Router (src/app directory)
+- Tailwind CSS 4 using @tailwindcss/postcss plugin
+- ESLint 9 flat config (eslint.config.mjs) - use typescript-eslint for TS/TSX linting
+- `next lint` command not available in Next.js 16, use `eslint` directly
+
+---
+
+## 2026-01-16 - US-001
+- What was implemented:
+  - Verified Next.js 16 project with App Router structure
+  - Configured ESLint 9 with flat config format (eslint.config.mjs)
+  - Added .gitignore for node_modules, .next, and other build artifacts
+  - Updated package.json lint script to use eslint directly
+- Files changed:
+  - eslint.config.mjs (created)
+  - .gitignore (created)
+  - package.json (lint script updated)
+  - prd.json (marked US-001 as passes: true)
+- **Learnings for future iterations:**
+  - Next.js 16 does not include `next lint` command - must use eslint directly
+  - ESLint 9 requires flat config format (eslint.config.mjs), not .eslintrc.json
+  - Use typescript-eslint for TypeScript linting in ESLint 9 flat config
+  - eslint-config-next has compatibility issues with FlatCompat in ESLint 9
+---
