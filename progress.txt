@@ -18,6 +18,9 @@ Started: Fri Jan 16 23:20:34 -03 2026
 - Use Prisma $transaction for atomic multi-record operations
 - Wrap server component lists with client component for modal state management (e.g., ExpenseSection)
 - Use router.refresh() after mutations to refetch server data
+- Mobile responsive: Use `sm:` breakpoint (640px), bottom sheet pattern for modals, card layout for lists
+- Touch targets: Always use min-h-[44px] and min-w-[44px] for buttons and interactive elements
+- iOS input zoom: Use text-base (16px) minimum font size on mobile inputs
 
 ---
 
@@ -339,4 +342,37 @@ Started: Fri Jan 16 23:20:34 -03 2026
   - Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }) for proper currency formatting
   - parseFloat() needed to convert Prisma Decimal string amounts back to numbers for math
   - Totals update automatically since ExpenseSection receives fresh expenses prop after router.refresh()
+---
+
+## 2026-01-17 - US-017
+- What was implemented:
+  - Made Header component mobile-friendly with hamburger menu that toggles dropdown navigation
+  - Converted ExpenseList from table-only to dual layout: card view for mobile (<640px), table for desktop
+  - Updated all modals (AddExpense, EditExpense, DeleteConfirm, CloneExpenses) to use bottom sheet pattern on mobile
+  - Ensured all buttons and touch targets are at least 44px for accessibility compliance
+  - Added responsive padding, typography, and spacing throughout the app
+  - Made input fields larger on mobile (py-3 + text-base) to prevent iOS zoom on focus
+  - Updated home, login, and register pages for mobile viewports
+- Files changed:
+  - src/components/Header.tsx (hamburger menu, mobile dropdown)
+  - src/components/ExpenseList.tsx (card layout for mobile + table for desktop)
+  - src/components/ExpenseSection.tsx (responsive button layout)
+  - src/components/ExpenseTotals.tsx (responsive spacing and typography)
+  - src/components/MonthNavigation.tsx (touch target sizes)
+  - src/components/AddExpenseModal.tsx (bottom sheet mobile pattern)
+  - src/components/EditExpenseModal.tsx (bottom sheet mobile pattern)
+  - src/components/DeleteConfirmModal.tsx (bottom sheet mobile pattern)
+  - src/components/CloneExpensesModal.tsx (bottom sheet + card layout for mobile)
+  - src/app/dashboard/page.tsx (responsive padding)
+  - src/app/page.tsx (responsive padding and typography)
+  - src/app/login/page.tsx (responsive form)
+  - src/app/register/page.tsx (responsive form)
+  - prd.json (marked US-017 as passes: true)
+- **Learnings for future iterations:**
+  - Use `sm:` Tailwind breakpoint (640px) for mobile-first responsive design
+  - Bottom sheet pattern for mobile modals: `items-end sm:items-center` + `rounded-t-xl sm:rounded-lg`
+  - Card layout is more readable than tables on small screens
+  - iOS requires text-base (16px) minimum font size to prevent auto-zoom on input focus
+  - Always use min-h-[44px] and min-w-[44px] for touch targets (Apple HIG recommendation)
+  - For buttons in modals, use `flex-col-reverse sm:flex-row` to put primary action at top on mobile
 ---

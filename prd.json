@@ -277,7 +277,7 @@
         "Verify in browser using dev-browser skill at mobile viewport"
       ],
       "priority": 17,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {
