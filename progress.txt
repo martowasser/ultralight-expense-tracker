@@ -7,6 +7,11 @@ Started: Fri Jan 16 23:20:34 -03 2026
 - Tailwind CSS 4 using @tailwindcss/postcss plugin
 - ESLint 9 flat config (eslint.config.mjs) - use typescript-eslint for TS/TSX linting
 - `next lint` command not available in Next.js 16, use `eslint` directly
+- Prisma 7 requires driver adapter (e.g., @prisma/adapter-pg) - cannot use PrismaClient() without adapter
+- Prisma client generated to src/generated/prisma/client.ts - import from "@/generated/prisma/client"
+- Use singleton pattern for PrismaClient in src/lib/prisma.ts
+- NextAuth v5 configured in src/auth.ts - use { auth, signIn, signOut } exports
+- PostgreSQL running in Docker on port 5434 (container: expense-tracker-postgres)
 
 ---
 
@@ -26,4 +31,90 @@ Started: Fri Jan 16 23:20:34 -03 2026
   - ESLint 9 requires flat config format (eslint.config.mjs), not .eslintrc.json
   - Use typescript-eslint for TypeScript linting in ESLint 9 flat config
   - eslint-config-next has compatibility issues with FlatCompat in ESLint 9
+---
+
+## 2026-01-16 - US-002
+- What was implemented:
+  - Installed Prisma CLI and @prisma/client
+  - Initialized Prisma with PostgreSQL provider
+  - Added User model placeholder with id, email, createdAt, updatedAt fields
+  - Configured Prisma 7 with @prisma/adapter-pg driver adapter
+  - Created src/lib/prisma.ts with singleton pattern for PrismaClient
+  - Added src/generated/prisma to .gitignore
+- Files changed:
+  - package.json (added prisma, @prisma/client, @prisma/adapter-pg, pg, dotenv, @types/pg)
+  - package-lock.json (updated)
+  - prisma/schema.prisma (created with User model)
+  - prisma.config.ts (created)
+  - src/lib/prisma.ts (created)
+  - .gitignore (added /src/generated/prisma)
+  - prd.json (marked US-002 as passes: true)
+- **Learnings for future iterations:**
+  - Prisma 7 has breaking change: PrismaClient now requires adapter or accelerateUrl
+  - For PostgreSQL, use @prisma/adapter-pg with PrismaPg class
+  - prisma generate outputs to src/generated/prisma/client.ts (not index.ts)
+  - The generated client uses "prisma-client" provider, not "prisma-client-js"
+---
+
+## 2026-01-17 - US-003
+- What was implemented:
+  - Installed NextAuth.js v5 beta and bcryptjs for password hashing
+  - Updated User model in Prisma schema with password field (String)
+  - Ran Prisma migration successfully (add_user_password)
+  - Created src/auth.ts with NextAuth configuration using Credentials provider
+  - Created src/app/api/auth/[...nextauth]/route.ts for API route handler
+  - Created src/types/next-auth.d.ts for TypeScript type extensions
+  - All typecheck and lint checks pass
+- Files changed:
+  - package.json (added next-auth, bcryptjs, @types/bcryptjs)
+  - package-lock.json (updated)
+  - prisma/schema.prisma (added password field to User model)
+  - prisma/migrations/20260117023613_add_user_password/ (created)
+  - src/auth.ts (created - NextAuth configuration)
+  - src/app/api/auth/[...nextauth]/route.ts (created)
+  - src/types/next-auth.d.ts (created)
+  - prd.json (marked US-003 as passes: true)
+- **Learnings for future iterations:**
+  - NextAuth v5 uses a simplified API: export { handlers, signIn, signOut, auth } from NextAuth()
+  - Credentials provider authorize function should return null for invalid credentials (not throw)
+  - Use bcryptjs (not bcrypt) for better Node.js compatibility
+  - NextAuth v5 route handler at src/app/api/auth/[...nextauth]/route.ts exports { GET, POST } from handlers
+  - Custom session fields require extending next-auth types in src/types/next-auth.d.ts
+---
+
+## 2026-01-17 - US-004
+- What was implemented:
+  - Created login page at /login with email and password fields
+  - Used "use client" directive for client-side form handling
+  - Implemented signIn from next-auth/react with redirect: false
+  - Added error state to display "Invalid email or password" message
+  - Configured redirect to /dashboard on successful login
+  - Styled with Tailwind CSS matching existing patterns
+- Files changed:
+  - src/app/login/page.tsx (created)
+  - prd.json (marked US-004 as passes: true)
+- **Learnings for future iterations:**
+  - For client-side form handling in Next.js App Router, use "use client" directive
+  - Use signIn from "next-auth/react" (not from auth.ts) for client components
+  - Set redirect: false in signIn options to handle errors manually
+  - Check result?.error to detect authentication failures
+---
+
+## 2026-01-17 - US-005
+- What was implemented:
+  - Created registration page at /register with email, password, and confirm password fields
+  - Added client-side validation (all fields required, passwords must match, min 6 chars)
+  - Created API route at /api/auth/register that creates users in database
+  - API validates email format, password length, and checks for existing users
+  - Passwords are hashed with bcryptjs before storing
+  - Redirect to /login after successful registration
+  - Added link to login page for existing users
+- Files changed:
+  - src/app/register/page.tsx (created)
+  - src/app/api/auth/register/route.ts (created)
+  - prd.json (marked US-005 as passes: true)
+- **Learnings for future iterations:**
+  - Registration API route pattern: validate -> check existing user -> hash password -> create user
+  - Use fetch() with JSON body to call API routes from client components
+  - Both client and server-side validation should be performed for security
 ---
