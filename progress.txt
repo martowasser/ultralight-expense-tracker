@@ -13,6 +13,8 @@ Started: Fri Jan 16 23:20:34 -03 2026
 - NextAuth v5 configured in src/auth.ts - use { auth, signIn, signOut } exports
 - PostgreSQL running in Docker on port 5434 (container: expense-tracker-postgres)
 - In Next.js 16, searchParams is a Promise - use `searchParams: Promise<{ key?: string }>` and `await searchParams`
+- Server actions in src/app/dashboard/actions.ts - export types for UI components
+- Prisma Decimal fields need .toString() conversion before returning from server actions
 
 ---
 
@@ -172,4 +174,42 @@ Started: Fri Jan 16 23:20:34 -03 2026
   - In Next.js 16 App Router, searchParams prop is a Promise<{ [key]: string }> - must await it
   - Use redirect() to ensure URL always reflects state (month param always present)
   - toLocaleDateString("en-US", { month: "long", year: "numeric" }) formats month nicely
+---
+
+## 2026-01-17 - US-009
+- What was implemented:
+  - Created MonthNavigation client component with Previous and Next buttons
+  - Buttons flank the month header in the dashboard
+  - Clicking Previous/Next updates URL query param to navigate months
+  - Used router.push() from next/navigation for client-side navigation
+  - Added helper functions getPreviousMonth() and getNextMonth() for date math
+- Files changed:
+  - src/components/MonthNavigation.tsx (created)
+  - src/app/dashboard/page.tsx (integrated MonthNavigation component)
+  - prd.json (marked US-009 as passes: true)
+- **Learnings for future iterations:**
+  - For client-side navigation in App Router, use useRouter() from "next/navigation" with router.push()
+  - Date manipulation for months: create Date, setMonth(+/-1), extract year/month from result
+  - Pattern: Server component fetches data, client component handles navigation/interaction
+---
+
+## 2026-01-17 - US-010
+- What was implemented:
+  - Created server action in src/app/dashboard/actions.ts to fetch MonthlyExpense records
+  - Server action filters by userId and month, orders by expense.dueDay ascending
+  - Created ExpenseList component (src/components/ExpenseList.tsx) displaying name, amount, due day, paid status
+  - Added empty state message when no expenses exist for the selected month
+  - Integrated ExpenseList into dashboard page, passing fetched expenses
+  - Amount displayed with proper $ formatting and 2 decimal places
+  - Paid status shows as color-coded badges (green for Paid, yellow for Pending)
+- Files changed:
+  - src/app/dashboard/actions.ts (created - server action for fetching expenses)
+  - src/components/ExpenseList.tsx (created - expense list component)
+  - src/app/dashboard/page.tsx (updated to use ExpenseList)
+  - prd.json (marked US-010 as passes: true)
+- **Learnings for future iterations:**
+  - Use "use server" directive for server actions in separate files
+  - Prisma Decimal type needs .toString() conversion for serialization to client
+  - Export types from actions.ts for use in UI components (MonthlyExpenseWithExpense)
+  - Pattern: Server action fetches data with auth check, returns serializable data to components
 ---

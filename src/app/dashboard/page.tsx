@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import Header from "@/components/Header";
 import MonthNavigation from "@/components/MonthNavigation";
+import ExpenseList from "@/components/ExpenseList";
+import { getMonthlyExpenses } from "./actions";
 
 function getCurrentMonth(): string {
   const now = new Date();
@@ -45,6 +47,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   }
 
   const displayMonth = formatMonthDisplay(selectedMonth);
+  const expenses = await getMonthlyExpenses(selectedMonth);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -53,9 +56,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         <div className="mb-6">
           <MonthNavigation currentMonth={selectedMonth} displayMonth={displayMonth} />
         </div>
-        <p className="text-gray-600 text-center">
-          Your expenses for {displayMonth} will appear here.
-        </p>
+        <ExpenseList expenses={expenses} displayMonth={displayMonth} />
       </main>
     </div>
   );
