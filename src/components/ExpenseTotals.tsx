@@ -16,21 +16,18 @@ export default function ExpenseTotals({ paidTotal, unpaidTotal }: ExpenseTotalsP
   const grandTotal = paidTotal + unpaidTotal;
 
   return (
-    <div className="bg-white rounded-lg shadow p-3 sm:p-4 mb-4 sm:mb-6">
-      <h3 className="text-sm font-medium text-gray-500 mb-2 sm:mb-3">Monthly Summary</h3>
-      <div className="grid grid-cols-3 gap-2 sm:gap-4">
-        <div className="text-center">
-          <p className="text-xs sm:text-sm text-gray-500">Paid</p>
-          <p className="text-base sm:text-lg font-semibold text-green-600">{formatCurrency(paidTotal)}</p>
-        </div>
-        <div className="text-center">
-          <p className="text-xs sm:text-sm text-gray-500">Unpaid</p>
-          <p className="text-base sm:text-lg font-semibold text-yellow-600">{formatCurrency(unpaidTotal)}</p>
-        </div>
-        <div className="text-center">
-          <p className="text-xs sm:text-sm text-gray-500">Total</p>
-          <p className="text-base sm:text-lg font-semibold text-gray-900">{formatCurrency(grandTotal)}</p>
-        </div>
+    <div className="grid grid-cols-3 gap-4 py-4 border-b border-[#e5e5e5]">
+      <div>
+        <p className="text-xs text-[#a3a3a3]">paid</p>
+        <p className="text-sm text-[#171717] tabular-nums mt-1">{formatCurrency(paidTotal)}</p>
+      </div>
+      <div>
+        <p className="text-xs text-[#a3a3a3]">unpaid</p>
+        <p className="text-sm text-[#171717] tabular-nums mt-1">{formatCurrency(unpaidTotal)}</p>
+      </div>
+      <div>
+        <p className="text-xs text-[#a3a3a3]">total</p>
+        <p className="text-sm text-[#171717] tabular-nums mt-1">{formatCurrency(grandTotal)}</p>
       </div>
     </div>
   );

@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 
 interface MonthNavigationProps {
   currentMonth: string; // YYYY-MM format
-  displayMonth: string; // Human readable format like "January 2026"
+  displayMonth: string; // Human readable format like "january 2026"
 }
 
 function getPreviousMonth(month: string): string {
@@ -39,15 +39,15 @@ export default function MonthNavigation({ currentMonth, displayMonth }: MonthNav
   };
 
   return (
-    <div className="flex items-center justify-center gap-2 sm:gap-4">
+    <div className="flex items-center justify-center gap-4">
       <button
         onClick={handlePrevious}
-        className="p-3 sm:px-4 sm:py-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+        className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-[#a3a3a3] hover:text-[#171717]"
         aria-label="Previous month"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          className="h-5 w-5"
+          className="h-4 w-4"
           viewBox="0 0 20 20"
           fill="currentColor"
         >
@@ -58,17 +58,17 @@ export default function MonthNavigation({ currentMonth, displayMonth }: MonthNav
           />
         </svg>
       </button>
-      <h2 className="text-xl sm:text-2xl font-bold text-gray-900 min-w-[140px] sm:min-w-[200px] text-center">
+      <h2 className="text-base font-normal text-[#171717] min-w-[160px] text-center lowercase">
         {displayMonth}
       </h2>
       <button
         onClick={handleNext}
-        className="p-3 sm:px-4 sm:py-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+        className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-[#a3a3a3] hover:text-[#171717]"
         aria-label="Next month"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          className="h-5 w-5"
+          className="h-4 w-4"
           viewBox="0 0 20 20"
           fill="currentColor"
         >

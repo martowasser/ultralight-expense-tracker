@@ -2,27 +2,31 @@ import Link from "next/link";
 
 export default function Home() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center px-4 py-8 sm:p-24">
-      <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 text-center">
-        Monthly Expense Tracker
-      </h1>
-      <p className="mt-4 text-base sm:text-lg text-gray-600 text-center">
-        Track your recurring monthly expenses
-      </p>
+    <main className="min-h-screen flex flex-col items-center justify-center px-6 py-12">
+      <div className="w-full max-w-[640px] text-center space-y-8">
+        <div className="space-y-3">
+          <h1 className="text-xl font-normal text-[#171717] lowercase">
+            monthly expense tracker
+          </h1>
+          <p className="text-sm text-[#737373]">
+            track your recurring monthly expenses
+          </p>
+        </div>
 
-      <div className="mt-8 flex flex-col sm:flex-row gap-4 w-full max-w-xs sm:max-w-md">
-        <Link
-          href="/login"
-          className="flex-1 flex justify-center py-3 px-6 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 min-h-[44px] items-center"
-        >
-          Login
-        </Link>
-        <Link
-          href="/register"
-          className="flex-1 flex justify-center py-3 px-6 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 min-h-[44px] items-center"
-        >
-          Register
-        </Link>
+        <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
+          <Link
+            href="/login"
+            className="btn px-6 py-3 text-sm text-[#fafafa] bg-[#171717] hover:bg-[#404040] min-h-[44px] flex items-center justify-center no-underline"
+          >
+            login
+          </Link>
+          <Link
+            href="/register"
+            className="btn px-6 py-3 text-sm text-[#171717] border border-[#e5e5e5] hover:border-[#a3a3a3] min-h-[44px] flex items-center justify-center no-underline"
+          >
+            register
+          </Link>
+        </div>
       </div>
     </main>
   );

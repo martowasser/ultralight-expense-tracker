@@ -296,6 +296,24 @@
       "priority": 18,
       "passes": true,
       "notes": ""
+    },
+    {
+      "id": "US-019",
+      "title": "Apply Quiet Minimalism design system",
+      "description": "As a user, I want a calm, minimal interface that prioritizes clarity and lets content breathe.",
+      "acceptanceCriteria": [
+        "Layout: Single column, centered content (max-width ~640px), generous vertical whitespace",
+        "Typography: System fonts or clean sans-serif (Geist, Inter), limited hierarchy (one heading size, body, muted captions), lowercase text for approachable tone",
+        "Colors: Near-white background (#fafafa), dark gray text (#171717), muted grays for secondary (#737373, #a3a3a3), single accent color used sparingly",
+        "Interactions: Subtle hover states (color shifts, no animations), underlined links with offset, minimal motion",
+        "Content: Information as simple scannable rows, minimal footers, no visual clutter",
+        "Remove all unnecessary decorative elements",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 19,
+      "passes": true,
+      "notes": "Philosophy: Let content breathe. Remove everything that doesn't earn its place. Character through restraint, not decoration."
     }
   ]
 }

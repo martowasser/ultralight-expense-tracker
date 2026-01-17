@@ -21,6 +21,7 @@ Started: Fri Jan 16 23:20:34 -03 2026
 - Mobile responsive: Use `sm:` breakpoint (640px), bottom sheet pattern for modals, card layout for lists
 - Touch targets: Always use min-h-[44px] and min-w-[44px] for buttons and interactive elements
 - iOS input zoom: Use text-base (16px) minimum font size on mobile inputs
+- Quiet Minimalism design: #fafafa bg, #171717 text, #737373/#a3a3a3 muted, lowercase text, max-w-[640px] centered layout
 
 ---
 
@@ -375,4 +376,57 @@ Started: Fri Jan 16 23:20:34 -03 2026
   - iOS requires text-base (16px) minimum font size to prevent auto-zoom on input focus
   - Always use min-h-[44px] and min-w-[44px] for touch targets (Apple HIG recommendation)
   - For buttons in modals, use `flex-col-reverse sm:flex-row` to put primary action at top on mobile
+---
+
+## 2026-01-17 - US-018
+- What was implemented:
+  - Added Login and Register buttons to the home page (/)
+  - Login button styled with blue background (primary action) navigates to /login
+  - Register button styled with white background and gray border (secondary action) navigates to /register
+  - Buttons are responsive: stacked vertically on mobile, side-by-side on desktop
+  - Touch targets meet accessibility requirements (min-h-[44px])
+  - Used Next.js Link component for client-side navigation
+- Files changed:
+  - src/app/page.tsx (added Link import and buttons)
+  - prd.json (marked US-018 as passes: true)
+- **Learnings for future iterations:**
+  - Use Link from next/link for navigation in server components (no "use client" needed)
+  - Primary/secondary button pattern: primary uses solid bg color, secondary uses white bg with border
+  - flex-1 on both buttons in a flex container makes them equal width
+---
+
+## 2026-01-17 - US-019
+- What was implemented:
+  - Applied Quiet Minimalism design system across entire application
+  - Layout: Single column, centered content with max-width 640px, generous vertical whitespace
+  - Typography: System fonts, limited hierarchy (one heading size, body, muted captions), lowercase text throughout
+  - Colors: Near-white background (#fafafa), dark gray text (#171717), muted grays (#737373, #a3a3a3), black accent for buttons
+  - Interactions: Subtle hover states (color shifts only, no animations), underlined links with offset
+  - Content: Simple scannable rows for expenses, minimal visual clutter, removed shadows and rounded corners
+  - Removed all decorative elements: shadows, excessive borders, color badges, card backgrounds
+- Files changed:
+  - src/app/globals.css (added CSS variables and base styles for design system)
+  - src/app/layout.tsx (updated body background and text colors)
+  - src/app/page.tsx (minimal home page with lowercase text)
+  - src/app/login/page.tsx (clean login form)
+  - src/app/register/page.tsx (clean register form)
+  - src/app/dashboard/page.tsx (centered layout, lowercase month display)
+  - src/components/Header.tsx (minimal header with text-only navigation)
+  - src/components/MonthNavigation.tsx (subtle navigation arrows)
+  - src/components/ExpenseSection.tsx (simplified button styles)
+  - src/components/ExpenseList.tsx (scannable row layout, checkbox with strikethrough)
+  - src/components/ExpenseTotals.tsx (minimal grid layout)
+  - src/components/AddExpenseModal.tsx (clean modal with flat inputs)
+  - src/components/EditExpenseModal.tsx (clean modal with flat inputs)
+  - src/components/DeleteConfirmModal.tsx (minimal confirmation dialog)
+  - src/components/CloneExpensesModal.tsx (simplified clone interface)
+  - prd.json (marked US-019 as passes: true)
+- **Learnings for future iterations:**
+  - Quiet Minimalism uses specific color palette: #fafafa (bg), #171717 (text), #737373 (secondary), #a3a3a3 (muted), #e5e5e5 (borders)
+  - Lowercase text creates an approachable, calm tone - use throughout headings and buttons
+  - Remove shadows, rounded corners, and color-coded elements for visual restraint
+  - Buttons: primary uses black bg (#171717), secondary uses border-only with muted text
+  - Inputs: flat design with border-only, focus state changes border to dark
+  - Content should breathe: use generous spacing (space-y-6, space-y-8) and single column layout
+  - max-w-[640px] is optimal for single-column reading comfort
 ---

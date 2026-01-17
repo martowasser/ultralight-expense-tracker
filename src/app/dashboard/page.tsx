@@ -15,7 +15,7 @@ function getCurrentMonth(): string {
 function formatMonthDisplay(monthStr: string): string {
   const [year, month] = monthStr.split("-");
   const date = new Date(parseInt(year), parseInt(month) - 1, 1);
-  return date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  return date.toLocaleDateString("en-US", { month: "long", year: "numeric" }).toLowerCase();
 }
 
 function isValidMonthFormat(month: string): boolean {
@@ -50,12 +50,10 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const expenses = await getMonthlyExpenses(selectedMonth);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#fafafa]">
       <Header userEmail={session.user.email || ""} />
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
-        <div className="mb-4 sm:mb-6">
-          <MonthNavigation currentMonth={selectedMonth} displayMonth={displayMonth} />
-        </div>
+      <main className="max-w-[640px] mx-auto px-6 py-8 space-y-8">
+        <MonthNavigation currentMonth={selectedMonth} displayMonth={displayMonth} />
         <ExpenseSection expenses={expenses} currentMonth={selectedMonth} displayMonth={displayMonth} />
       </main>
     </div>

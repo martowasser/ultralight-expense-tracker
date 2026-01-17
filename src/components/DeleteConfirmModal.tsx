@@ -14,37 +14,36 @@ export default function DeleteConfirmModal({
   onConfirm,
 }: DeleteConfirmModalProps) {
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50">
-      <div className="bg-white rounded-t-xl sm:rounded-lg shadow-xl w-full sm:max-w-md sm:mx-4">
-        <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">Delete Expense</h2>
+    <div className="fixed inset-0 bg-black/30 flex items-end sm:items-center justify-center z-50">
+      <div className="bg-[#fafafa] w-full sm:max-w-[400px] sm:mx-4">
+        <div className="px-6 py-4 border-b border-[#e5e5e5]">
+          <h2 className="text-sm text-[#171717]">delete expense</h2>
         </div>
 
-        <div className="p-4 sm:p-6">
-          <p className="text-gray-700">
-            Are you sure you want to delete this expense?
+        <div className="p-6 space-y-4">
+          <p className="text-sm text-[#171717]">
+            are you sure you want to delete &ldquo;{expenseName}&rdquo;?
           </p>
-          <p className="mt-2 text-sm text-gray-500">
-            <span className="font-medium">&ldquo;{expenseName}&rdquo;</span> and all its monthly
-            records will be permanently deleted.
+          <p className="text-sm text-[#a3a3a3]">
+            this expense and all its monthly records will be permanently deleted.
           </p>
 
-          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-6">
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-2">
             <button
               type="button"
               onClick={onClose}
               disabled={isDeleting}
-              className="w-full sm:w-auto px-4 py-3 sm:py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 min-h-[44px]"
+              className="w-full sm:w-auto px-4 py-3 text-sm text-[#737373] border border-[#e5e5e5] hover:border-[#a3a3a3] hover:text-[#171717] disabled:opacity-50 min-h-[44px]"
             >
-              Cancel
+              cancel
             </button>
             <button
               type="button"
               onClick={onConfirm}
               disabled={isDeleting}
-              className="w-full sm:w-auto px-4 py-3 sm:py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50 min-h-[44px]"
+              className="w-full sm:w-auto px-4 py-3 text-sm text-[#fafafa] bg-[#171717] hover:bg-[#404040] disabled:opacity-50 min-h-[44px]"
             >
-              {isDeleting ? "Deleting..." : "Delete"}
+              {isDeleting ? "deleting..." : "delete"}
             </button>
           </div>
         </div>

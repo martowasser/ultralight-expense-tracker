@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Monthly Expense Tracker",
-  description: "A web app to manage recurring monthly expenses",
+  title: "monthly expense tracker",
+  description: "track your recurring monthly expenses",
 };
 
 export default function RootLayout({
@@ -13,7 +13,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="antialiased">
+      <body className="antialiased bg-[#fafafa] text-[#171717]">
         {children}
       </body>
     </html>

@@ -18,17 +18,17 @@ export default function RegisterPage() {
 
     // Client-side validation
     if (!email || !password || !confirmPassword) {
-      setError("All fields are required");
+      setError("all fields are required");
       return;
     }
 
     if (password !== confirmPassword) {
-      setError("Passwords do not match");
+      setError("passwords do not match");
       return;
     }
 
     if (password.length < 6) {
-      setError("Password must be at least 6 characters");
+      setError("password must be at least 6 characters");
       return;
     }
 
@@ -46,37 +46,32 @@ export default function RegisterPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.error || "Registration failed");
+        setError(data.error || "registration failed");
       } else {
         router.push("/login");
       }
     } catch {
-      setError("An error occurred. Please try again.");
+      setError("an error occurred. please try again.");
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center px-4 py-8 sm:p-24">
-      <div className="w-full max-w-md">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 text-center mb-6 sm:mb-8">
-          Create Account
+    <main className="min-h-screen flex flex-col items-center justify-center px-6 py-12">
+      <div className="w-full max-w-[400px] space-y-8">
+        <h1 className="text-xl font-normal text-[#171717] text-center lowercase">
+          create account
         </h1>
 
-        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded">
-              {error}
-            </div>
+            <p className="text-sm text-[#737373] text-center">{error}</p>
           )}
 
-          <div>
-            <label
-              htmlFor="email"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Email
+          <div className="space-y-1">
+            <label htmlFor="email" className="block text-sm text-[#737373]">
+              email
             </label>
             <input
               id="email"
@@ -84,16 +79,13 @@ export default function RegisterPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="mt-1 block w-full px-3 py-3 sm:py-2 text-base sm:text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-3 text-base text-[#171717] bg-white border border-[#e5e5e5] focus:border-[#171717] focus:outline-none"
             />
           </div>
 
-          <div>
-            <label
-              htmlFor="password"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Password
+          <div className="space-y-1">
+            <label htmlFor="password" className="block text-sm text-[#737373]">
+              password
             </label>
             <input
               id="password"
@@ -101,16 +93,13 @@ export default function RegisterPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="mt-1 block w-full px-3 py-3 sm:py-2 text-base sm:text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-3 text-base text-[#171717] bg-white border border-[#e5e5e5] focus:border-[#171717] focus:outline-none"
             />
           </div>
 
-          <div>
-            <label
-              htmlFor="confirmPassword"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Confirm Password
+          <div className="space-y-1">
+            <label htmlFor="confirmPassword" className="block text-sm text-[#737373]">
+              confirm password
             </label>
             <input
               id="confirmPassword"
@@ -118,23 +107,23 @@ export default function RegisterPage() {
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
-              className="mt-1 block w-full px-3 py-3 sm:py-2 text-base sm:text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-3 text-base text-[#171717] bg-white border border-[#e5e5e5] focus:border-[#171717] focus:outline-none"
             />
           </div>
 
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full flex justify-center py-3 sm:py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
+            className="w-full py-3 text-sm text-[#fafafa] bg-[#171717] hover:bg-[#404040] disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
           >
-            {isLoading ? "Creating account..." : "Create account"}
+            {isLoading ? "creating account..." : "create account"}
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-gray-600">
-          Already have an account?{" "}
-          <Link href="/login" className="text-blue-600 hover:text-blue-500 py-2 inline-block">
-            Sign in
+        <p className="text-sm text-[#a3a3a3] text-center">
+          already have an account?{" "}
+          <Link href="/login" className="text-[#171717] hover:text-[#737373]">
+            sign in
           </Link>
         </p>
       </div>

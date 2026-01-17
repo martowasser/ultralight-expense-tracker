@@ -79,7 +79,7 @@ export default function ExpenseSection({
       setDeletingExpense(null);
       router.refresh();
     } else {
-      alert(result.error || "Failed to delete expense");
+      alert(result.error || "failed to delete expense");
     }
   };
 
@@ -94,28 +94,28 @@ export default function ExpenseSection({
     if (result.success) {
       router.refresh();
     } else {
-      alert(result.error || "Failed to update paid status");
+      alert(result.error || "failed to update paid status");
     }
   };
 
   return (
-    <div>
+    <div className="space-y-6">
       <ExpenseTotals paidTotal={paidTotal} unpaidTotal={unpaidTotal} />
 
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
-        <h2 className="text-lg font-semibold text-gray-900">Expenses</h2>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+        <span className="text-sm text-[#737373]">expenses</span>
         <div className="flex flex-col sm:flex-row gap-2">
           <button
             onClick={() => setIsCloneModalOpen(true)}
-            className="px-4 py-3 sm:py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px]"
+            className="px-4 py-3 text-sm text-[#737373] border border-[#e5e5e5] hover:border-[#a3a3a3] hover:text-[#171717] min-h-[44px]"
           >
-            Clone from Previous Month
+            clone from previous
           </button>
           <button
             onClick={() => setIsAddModalOpen(true)}
-            className="px-4 py-3 sm:py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px]"
+            className="px-4 py-3 text-sm text-[#fafafa] bg-[#171717] hover:bg-[#404040] min-h-[44px]"
           >
-            Add Expense
+            add expense
           </button>
         </div>
       </div>

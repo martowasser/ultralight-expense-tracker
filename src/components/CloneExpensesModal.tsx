@@ -28,7 +28,7 @@ export default function CloneExpensesModal({
   const getPreviousMonthDisplay = () => {
     const [year, month] = currentMonth.split("-").map(Number);
     const prevDate = new Date(year, month - 2, 1);
-    return prevDate.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+    return prevDate.toLocaleDateString("en-US", { month: "long", year: "numeric" }).toLowerCase();
   };
 
   useEffect(() => {
@@ -70,7 +70,7 @@ export default function CloneExpensesModal({
     // Check for invalid amounts
     for (const exp of expensesToClone) {
       if (isNaN(exp.amount) || exp.amount <= 0) {
-        setError("All amounts must be positive numbers");
+        setError("all amounts must be positive numbers");
         return;
       }
     }
@@ -91,95 +91,56 @@ export default function CloneExpensesModal({
 
       onSuccess();
     } catch {
-      setError("Failed to clone expenses. Please try again.");
+      setError("failed to clone expenses");
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50">
-      <div className="bg-white rounded-t-xl sm:rounded-lg shadow-xl w-full sm:max-w-lg sm:mx-4 max-h-[90vh] flex flex-col">
-        <div className="px-4 sm:px-6 py-4 border-b border-gray-200 sticky top-0 bg-white">
-          <h2 className="text-lg font-semibold text-gray-900">Clone from Previous Month</h2>
-          <p className="text-sm text-gray-500 mt-1">
-            Clone expenses from {getPreviousMonthDisplay()}
+    <div className="fixed inset-0 bg-black/30 flex items-end sm:items-center justify-center z-50">
+      <div className="bg-[#fafafa] w-full sm:max-w-[480px] sm:mx-4 max-h-[90vh] flex flex-col">
+        <div className="px-6 py-4 border-b border-[#e5e5e5]">
+          <h2 className="text-sm text-[#171717]">clone from previous</h2>
+          <p className="text-xs text-[#a3a3a3] mt-1">
+            {getPreviousMonthDisplay()}
           </p>
         </div>
 
-        <div className="p-4 sm:p-6 overflow-y-auto flex-1">
+        <div className="p-6 overflow-y-auto flex-1">
           {error && (
-            <div className="p-3 mb-4 bg-red-50 border border-red-200 rounded-md">
-              <p className="text-sm text-red-600">{error}</p>
-            </div>
+            <p className="text-sm text-[#737373] mb-4">{error}</p>
           )}
 
           {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="text-gray-500">Loading previous month expenses...</div>
-            </div>
+            <p className="text-sm text-[#a3a3a3] text-center py-8">loading...</p>
           ) : previousExpenses.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-gray-500">No expenses found in {getPreviousMonthDisplay()}</p>
-              <p className="text-sm text-gray-400 mt-2">
-                Add some expenses to the previous month first.
-              </p>
+              <p className="text-sm text-[#a3a3a3]">no expenses in {getPreviousMonthDisplay()}</p>
             </div>
           ) : (
             <div className="space-y-4">
-              {/* Desktop header */}
-              <div className="hidden sm:grid grid-cols-12 gap-2 text-sm font-medium text-gray-500 pb-2 border-b">
-                <div className="col-span-5">Name</div>
-                <div className="col-span-3 text-right">Previous</div>
-                <div className="col-span-4 text-right">New Amount</div>
-              </div>
-
               {previousExpenses.map((expense) => (
-                <div key={expense.expenseId}>
-                  {/* Mobile card layout */}
-                  <div className="sm:hidden bg-gray-50 rounded-lg p-3 space-y-2">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">{expense.name}</p>
-                        <p className="text-xs text-gray-500">Due day: {expense.dueDay}</p>
-                      </div>
-                      <p className="text-sm text-gray-500">
-                        Prev: ${parseFloat(expense.amount).toFixed(2)}
-                      </p>
-                    </div>
+                <div key={expense.expenseId} className="py-3 border-b border-[#e5e5e5] last:border-b-0">
+                  <div className="flex items-start justify-between gap-4 mb-2">
                     <div>
-                      <label className="block text-xs text-gray-500 mb-1">New Amount</label>
-                      <input
-                        type="number"
-                        value={amounts[expense.expenseId] || ""}
-                        onChange={(e) => handleAmountChange(expense.expenseId, e.target.value)}
-                        step="0.01"
-                        min="0.01"
-                        disabled={isSubmitting}
-                        className="w-full px-3 py-3 text-base text-right border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
-                      />
+                      <p className="text-sm text-[#171717]">{expense.name}</p>
+                      <p className="text-xs text-[#a3a3a3]">due day {expense.dueDay}</p>
                     </div>
-                  </div>
-
-                  {/* Desktop row layout */}
-                  <div className="hidden sm:grid grid-cols-12 gap-2 items-center">
-                    <div className="col-span-5">
-                      <p className="text-sm font-medium text-gray-900">{expense.name}</p>
-                      <p className="text-xs text-gray-500">Due day: {expense.dueDay}</p>
-                    </div>
-                    <div className="col-span-3 text-right text-sm text-gray-500">
+                    <p className="text-sm text-[#a3a3a3] tabular-nums">
                       ${parseFloat(expense.amount).toFixed(2)}
-                    </div>
-                    <div className="col-span-4">
-                      <input
-                        type="number"
-                        value={amounts[expense.expenseId] || ""}
-                        onChange={(e) => handleAmountChange(expense.expenseId, e.target.value)}
-                        step="0.01"
-                        min="0.01"
-                        disabled={isSubmitting}
-                        className="w-full px-2 py-2 text-sm text-right border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
-                      />
-                    </div>
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-xs text-[#a3a3a3]">new amount</label>
+                    <input
+                      type="number"
+                      value={amounts[expense.expenseId] || ""}
+                      onChange={(e) => handleAmountChange(expense.expenseId, e.target.value)}
+                      step="0.01"
+                      min="0.01"
+                      disabled={isSubmitting}
+                      className="w-full px-3 py-3 text-base text-[#171717] bg-white border border-[#e5e5e5] focus:border-[#171717] focus:outline-none disabled:opacity-50 tabular-nums"
+                    />
                   </div>
                 </div>
               ))}
@@ -187,22 +148,22 @@ export default function CloneExpensesModal({
           )}
         </div>
 
-        <div className="px-4 sm:px-6 py-4 border-t border-gray-200 flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
+        <div className="px-6 py-4 border-t border-[#e5e5e5] flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
           <button
             type="button"
             onClick={onClose}
             disabled={isSubmitting}
-            className="w-full sm:w-auto px-4 py-3 sm:py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 min-h-[44px]"
+            className="w-full sm:w-auto px-4 py-3 text-sm text-[#737373] border border-[#e5e5e5] hover:border-[#a3a3a3] hover:text-[#171717] disabled:opacity-50 min-h-[44px]"
           >
-            Cancel
+            cancel
           </button>
           <button
             type="button"
             onClick={handleSubmit}
             disabled={isSubmitting || isLoading || previousExpenses.length === 0}
-            className="w-full sm:w-auto px-4 py-3 sm:py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 min-h-[44px]"
+            className="w-full sm:w-auto px-4 py-3 text-sm text-[#fafafa] bg-[#171717] hover:bg-[#404040] disabled:opacity-50 min-h-[44px]"
           >
-            {isSubmitting ? "Cloning..." : "Confirm Clone"}
+            {isSubmitting ? "cloning..." : "confirm"}
           </button>
         </div>
       </div>
