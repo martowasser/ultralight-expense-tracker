@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import ExpenseList from "./ExpenseList";
+import ExpenseTotals from "./ExpenseTotals";
 import AddExpenseModal from "./AddExpenseModal";
 import EditExpenseModal from "./EditExpenseModal";
 import DeleteConfirmModal from "./DeleteConfirmModal";
@@ -27,6 +28,22 @@ export default function ExpenseSection({
   const [isDeleting, setIsDeleting] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const router = useRouter();
+
+  // Calculate totals from expenses
+  const { paidTotal, unpaidTotal } = useMemo(() => {
+    return expenses.reduce(
+      (acc, expense) => {
+        const amount = parseFloat(expense.amount);
+        if (expense.isPaid) {
+          acc.paidTotal += amount;
+        } else {
+          acc.unpaidTotal += amount;
+        }
+        return acc;
+      },
+      { paidTotal: 0, unpaidTotal: 0 }
+    );
+  }, [expenses]);
 
   const handleAddSuccess = () => {
     setIsAddModalOpen(false);
@@ -83,6 +100,8 @@ export default function ExpenseSection({
 
   return (
     <div>
+      <ExpenseTotals paidTotal={paidTotal} unpaidTotal={unpaidTotal} />
+
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-lg font-semibold text-gray-900">Expenses</h2>
         <div className="flex gap-2">
