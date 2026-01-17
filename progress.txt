@@ -15,6 +15,9 @@ Started: Fri Jan 16 23:20:34 -03 2026
 - In Next.js 16, searchParams is a Promise - use `searchParams: Promise<{ key?: string }>` and `await searchParams`
 - Server actions in src/app/dashboard/actions.ts - export types for UI components
 - Prisma Decimal fields need .toString() conversion before returning from server actions
+- Use Prisma $transaction for atomic multi-record operations
+- Wrap server component lists with client component for modal state management (e.g., ExpenseSection)
+- Use router.refresh() after mutations to refetch server data
 
 ---
 
@@ -212,4 +215,45 @@ Started: Fri Jan 16 23:20:34 -03 2026
   - Prisma Decimal type needs .toString() conversion for serialization to client
   - Export types from actions.ts for use in UI components (MonthlyExpenseWithExpense)
   - Pattern: Server action fetches data with auth check, returns serializable data to components
+---
+
+## 2026-01-17 - US-011
+- What was implemented:
+  - Created AddExpenseModal component (src/components/AddExpenseModal.tsx) with form fields for name, amount, and due day
+  - Added client-side validation (name required, amount must be positive, due day 1-31)
+  - Created createExpense server action in src/app/dashboard/actions.ts
+  - Server action validates input and creates Expense + MonthlyExpense in a transaction
+  - Created ExpenseSection wrapper component to hold Add Expense button and modal state
+  - Modal closes and list refreshes via router.refresh() on success
+- Files changed:
+  - src/components/AddExpenseModal.tsx (created)
+  - src/components/ExpenseSection.tsx (created)
+  - src/app/dashboard/actions.ts (added createExpense action)
+  - src/app/dashboard/page.tsx (replaced ExpenseList with ExpenseSection)
+  - prd.json (marked US-011 as passes: true)
+- **Learnings for future iterations:**
+  - Use Prisma $transaction for creating related records atomically (Expense + MonthlyExpense)
+  - Pattern: Wrap server component lists with client component for modal state management
+  - Use router.refresh() from next/navigation to trigger server data refetch after mutations
+  - Return { success, error? } from server actions for consistent error handling in UI
+---
+
+## 2026-01-17 - US-012
+- What was implemented:
+  - Added Edit button to each expense row in ExpenseList component
+  - Created EditExpenseModal component pre-filled with current expense values
+  - Created updateExpense server action to update both Expense and MonthlyExpense records
+  - Server action validates ownership before allowing updates (security check)
+  - ExpenseSection component now manages both add and edit modal states
+  - List refreshes via router.refresh() after successful edit
+- Files changed:
+  - src/app/dashboard/actions.ts (added updateExpense action, UpdateExpenseInput/Result types)
+  - src/components/EditExpenseModal.tsx (created)
+  - src/components/ExpenseList.tsx (added Actions column with Edit button, onEdit prop)
+  - src/components/ExpenseSection.tsx (integrated EditExpenseModal, added edit state management)
+  - prd.json (marked US-012 as passes: true)
+- **Learnings for future iterations:**
+  - Always verify ownership before updating user-owned records (security best practice)
+  - Reuse modal patterns from add functionality - EditExpenseModal mirrors AddExpenseModal structure
+  - Use useState with expense type (or null) to track which expense is being edited
 ---

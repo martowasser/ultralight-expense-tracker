@@ -82,6 +82,83 @@ export async function createExpense(input: CreateExpenseInput): Promise<CreateEx
   }
 }
 
+export interface UpdateExpenseInput {
+  expenseId: string;
+  monthlyExpenseId: string;
+  name: string;
+  amount: number;
+  dueDay: number;
+}
+
+export interface UpdateExpenseResult {
+  success: boolean;
+  error?: string;
+}
+
+export async function updateExpense(input: UpdateExpenseInput): Promise<UpdateExpenseResult> {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  // Server-side validation
+  if (!input.name || input.name.trim().length === 0) {
+    return { success: false, error: "Name is required" };
+  }
+
+  if (typeof input.amount !== "number" || input.amount <= 0) {
+    return { success: false, error: "Amount must be a positive number" };
+  }
+
+  if (typeof input.dueDay !== "number" || input.dueDay < 1 || input.dueDay > 31) {
+    return { success: false, error: "Due day must be between 1 and 31" };
+  }
+
+  try {
+    // Verify ownership before updating
+    const expense = await prisma.expense.findUnique({
+      where: { id: input.expenseId },
+    });
+
+    if (!expense || expense.userId !== session.user.id) {
+      return { success: false, error: "Expense not found" };
+    }
+
+    const monthlyExpense = await prisma.monthlyExpense.findUnique({
+      where: { id: input.monthlyExpenseId },
+    });
+
+    if (!monthlyExpense || monthlyExpense.userId !== session.user.id) {
+      return { success: false, error: "Monthly expense not found" };
+    }
+
+    // Update Expense and MonthlyExpense in a transaction
+    await prisma.$transaction(async (tx) => {
+      await tx.expense.update({
+        where: { id: input.expenseId },
+        data: {
+          name: input.name.trim(),
+          amount: input.amount,
+          dueDay: input.dueDay,
+        },
+      });
+
+      await tx.monthlyExpense.update({
+        where: { id: input.monthlyExpenseId },
+        data: {
+          amount: input.amount,
+        },
+      });
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating expense:", error);
+    return { success: false, error: "Failed to update expense" };
+  }
+}
+
 export async function getMonthlyExpenses(month: string): Promise<MonthlyExpenseWithExpense[]> {
   const session = await auth();
 
