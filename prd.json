@@ -143,6 +143,24 @@
       "notes": ""
     },
     {
+      "id": "US-030",
+      "title": "Separate Currency Display on Dashboard",
+      "description": "As a user, I want to see ARS expenses totaled in ARS and USD expenses totaled in USD separately, without converting to a single currency.",
+      "acceptanceCriteria": [
+        "Dashboard shows two separate sections: ARS expenses and USD expenses",
+        "ARS section shows only ARS expenses with totals in ARS",
+        "USD section shows only USD expenses with totals in USD",
+        "No ARS equivalent shown for USD expenses (remove conversion display)",
+        "Each section shows its own paid/unpaid/total breakdown",
+        "Empty currency sections are hidden",
+        "Remove exchange rate display from dashboard (keep in settings for future use)",
+        "Typecheck passes"
+      ],
+      "priority": 10,
+      "passes": true,
+      "notes": ""
+    },
+    {
       "id": "US-029",
       "title": "Database Migration for New Schema",
       "description": "As a developer, I want to migrate the database to support new models so the app can handle institutions, accounts, cards, and enhanced expenses.",

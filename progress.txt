@@ -226,3 +226,22 @@ Started: Sun Jan 18 22:23:15 -03 2026
   - Simple settings pages don't need modals - inline form with save button works well
   - Add success message feedback after saving (useState for success state)
 ---
+
+## 2026-01-19 - US-030
+- What was implemented:
+  - Restructured dashboard to display ARS and USD expenses in completely separate sections
+  - Each currency section shows its own paid/unpaid/total breakdown header
+  - Categories are grouped within each currency section with currency-appropriate subtotals
+  - Removed ARS equivalent display for USD expenses (no more conversion)
+  - Removed ExpenseTotals component from dashboard (totals now in currency sections)
+  - Removed exchangeRate prop chain from page → ExpenseSection → ExpenseList
+  - Empty currency sections are automatically hidden
+- Files changed:
+  - src/components/ExpenseList.tsx (restructured - separate currency sections, removed exchangeRate)
+  - src/components/ExpenseSection.tsx (updated - removed ExpenseTotals, removed exchangeRate prop)
+  - src/app/dashboard/page.tsx (updated - removed getExchangeRate import and call)
+- **Learnings for future iterations:**
+  - renderCurrencySection pattern: filter expenses by currency, then render with currency-specific formatter
+  - Inline totals in section headers work better than separate totals component when organizing by currency
+  - Exchange rate is still in settings for future use, but not needed in dashboard anymore
+---
