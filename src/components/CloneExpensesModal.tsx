@@ -37,9 +37,10 @@ export default function CloneExpensesModal({
       const expenses = await getPreviousMonthExpenses(currentMonth);
       setPreviousExpenses(expenses);
       // Initialize amounts with previous month's amounts
+      // Credit Card expenses start at 0 so user must enter actual statement amount
       const initialAmounts: Record<string, string> = {};
       expenses.forEach((exp) => {
-        initialAmounts[exp.expenseId] = exp.amount;
+        initialAmounts[exp.expenseId] = exp.category === "CREDIT_CARD" ? "0" : exp.amount;
       });
       setAmounts(initialAmounts);
       setIsLoading(false);
@@ -121,6 +122,7 @@ export default function CloneExpensesModal({
             <div className="space-y-4">
               {previousExpenses.map((expense) => {
                 const isUSD = expense.currency === "USD";
+                const isCreditCard = expense.category === "CREDIT_CARD";
                 const formattedAmount = isUSD
                   ? `US$${parseFloat(expense.amount).toFixed(2)}`
                   : `$${parseFloat(expense.amount).toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -131,9 +133,14 @@ export default function CloneExpensesModal({
                         <p className="text-sm text-[#171717]">{expense.name}</p>
                         <p className="text-xs text-[#a3a3a3]">due day {expense.dueDay}</p>
                       </div>
-                      <p className="text-sm text-[#a3a3a3] tabular-nums">
-                        {formattedAmount}
-                      </p>
+                      <div className="text-right">
+                        <p className="text-sm text-[#a3a3a3] tabular-nums">
+                          {formattedAmount}
+                        </p>
+                        {isCreditCard && (
+                          <p className="text-xs text-[#a3a3a3]">enter statement amount</p>
+                        )}
+                      </div>
                     </div>
                     <div className="space-y-1">
                       <label className="block text-xs text-[#a3a3a3]">new amount ({expense.currency})</label>
