@@ -2,13 +2,22 @@
 
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { InstitutionType } from "@/generated/prisma/enums";
+import { InstitutionType, Currency } from "@/generated/prisma/enums";
+
+export interface InstitutionAccount {
+  id: string;
+  name: string;
+  currency: Currency;
+  institutionId: string;
+  createdAt: Date;
+}
 
 export interface Institution {
   id: string;
   name: string;
   type: InstitutionType;
   createdAt: Date;
+  accounts: InstitutionAccount[];
   _count: {
     accounts: number;
     creditCards: number;
@@ -173,6 +182,9 @@ export async function getInstitutions(): Promise<Institution[]> {
   const institutions = await prisma.institution.findMany({
     where: { userId: session.user.id },
     include: {
+      accounts: {
+        orderBy: { name: "asc" },
+      },
       _count: {
         select: {
           accounts: true,
@@ -191,6 +203,13 @@ export async function getInstitutions(): Promise<Institution[]> {
     name: inst.name,
     type: inst.type,
     createdAt: inst.createdAt,
+    accounts: inst.accounts.map((acc) => ({
+      id: acc.id,
+      name: acc.name,
+      currency: acc.currency,
+      institutionId: acc.institutionId,
+      createdAt: acc.createdAt,
+    })),
     _count: inst._count,
   }));
 }

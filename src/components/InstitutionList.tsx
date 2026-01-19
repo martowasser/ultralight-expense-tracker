@@ -1,12 +1,15 @@
 "use client";
 
-import { Institution } from "@/app/institutions/actions";
+import { Institution, InstitutionAccount } from "@/app/institutions/actions";
 import { InstitutionType } from "@/generated/prisma/enums";
 
 interface InstitutionListProps {
   institutions: Institution[];
   onEdit: (institution: Institution) => void;
   onDelete: (institution: Institution) => void;
+  onAddAccount: (institution: Institution) => void;
+  onEditAccount: (account: InstitutionAccount) => void;
+  onDeleteAccount: (account: InstitutionAccount) => void;
 }
 
 const typeLabels: Record<InstitutionType, string> = {
@@ -22,6 +25,9 @@ export default function InstitutionList({
   institutions,
   onEdit,
   onDelete,
+  onAddAccount,
+  onEditAccount,
+  onDeleteAccount,
 }: InstitutionListProps) {
   if (institutions.length === 0) {
     return (
@@ -76,6 +82,12 @@ export default function InstitutionList({
                     </div>
                     <div className="flex gap-2">
                       <button
+                        onClick={() => onAddAccount(institution)}
+                        className="text-sm text-[#a3a3a3] hover:text-[#171717] min-h-[44px] px-1"
+                      >
+                        + account
+                      </button>
+                      <button
                         onClick={() => onEdit(institution)}
                         className="text-sm text-[#a3a3a3] hover:text-[#171717] min-h-[44px] px-1"
                       >
@@ -89,6 +101,37 @@ export default function InstitutionList({
                       </button>
                     </div>
                   </div>
+
+                  {/* Accounts list */}
+                  {institution.accounts.length > 0 && (
+                    <div className="mt-3 ml-4 space-y-2">
+                      {institution.accounts.map((account) => (
+                        <div
+                          key={account.id}
+                          className="flex items-center justify-between gap-4 py-2 pl-3 border-l-2 border-[#e5e5e5]"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-[#737373]">{account.name}</p>
+                            <p className="text-xs text-[#a3a3a3]">{account.currency}</p>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => onEditAccount(account)}
+                              className="text-xs text-[#a3a3a3] hover:text-[#171717] min-h-[44px] px-1"
+                            >
+                              edit
+                            </button>
+                            <button
+                              onClick={() => onDeleteAccount(account)}
+                              className="text-xs text-[#a3a3a3] hover:text-[#171717] min-h-[44px] px-1"
+                            >
+                              delete
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
