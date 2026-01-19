@@ -174,3 +174,22 @@ Started: Sun Jan 18 22:23:15 -03 2026
   - For collapsible sections, auto-expand if the expense already has data in those fields
   - Pass account/creditCard data from server component page to avoid fetching in client modals
 ---
+
+## 2026-01-19 - US-026
+- What was implemented:
+  - When category is 'Credit Card', a card selector appears to link the expense to a specific credit card
+  - Selected card auto-fills the due day from the card's due day
+  - Selected card auto-fills the expense name with "Institution - Card Name" (editable by user)
+  - Added linkedCreditCardId field to CreateExpenseInput, UpdateExpenseInput, and MonthlyExpenseWithExpense
+  - Updated CreditCardOption interface to include dueDay for auto-fill functionality
+  - Added server-side validation for linkedCreditCardId ownership
+- Files changed:
+  - src/app/dashboard/actions.ts (updated - linkedCreditCardId in interfaces, CreditCardOption.dueDay, getCreditCardsForSelect includes dueDay)
+  - src/components/AddExpenseModal.tsx (updated - card selector when category is CREDIT_CARD, auto-fill handlers)
+  - src/components/EditExpenseModal.tsx (updated - card selector when category is CREDIT_CARD, auto-fill handlers)
+- **Learnings for future iterations:**
+  - Extend CreditCardOption with additional fields when needed for UI (like dueDay for auto-fill)
+  - Category-based conditional fields: show card selector only when category === "CREDIT_CARD"
+  - Auto-fill pattern: on card selection change, find card in array and set multiple fields at once
+  - linkedCreditCardId is separate from paidWithCardId - linkedCreditCardId links a credit card payment expense to its card
+---
