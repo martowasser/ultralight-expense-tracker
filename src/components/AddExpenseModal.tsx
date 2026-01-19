@@ -3,12 +3,10 @@
 import { useState } from "react";
 import {
   createExpense,
-  Currency,
-  ExpenseCategory,
-  PaymentMethod,
   AccountOption,
   CreditCardOption,
 } from "@/app/dashboard/actions";
+import { Currency, ExpenseCategory, PaymentMethod } from "@/app/dashboard/types";
 
 const CATEGORY_OPTIONS: { value: ExpenseCategory; label: string }[] = [
   { value: "CREDIT_CARD", label: "credit card" },

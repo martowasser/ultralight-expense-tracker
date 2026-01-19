@@ -25,3 +25,13 @@ dist/
 *.log
 
 /src/generated/prisma
+
+# Ralph (AI agent workflow)
+ralph.sh
+prompt.md
+prd.json
+progress.txt
+.last-branch
+tasks/
+archive/
+scripts/

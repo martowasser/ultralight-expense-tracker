@@ -4,8 +4,6 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { Currency, ExpenseCategory, PaymentMethod } from "@/generated/prisma/enums";
 
-export type { Currency, ExpenseCategory, PaymentMethod };
-
 export interface MonthlyExpenseWithExpense {
   id: string;
   expenseId: string;
