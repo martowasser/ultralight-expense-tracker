@@ -20,6 +20,7 @@ export default function Header({ userEmail }: HeaderProps) {
   const navLinks = [
     { href: "/dashboard", label: "expenses" },
     { href: "/institutions", label: "institutions" },
+    { href: "/credit-cards", label: "cards" },
   ];
 
   return (
