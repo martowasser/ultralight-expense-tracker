@@ -2,9 +2,9 @@
 
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { Currency } from "@/generated/prisma/enums";
+import { Currency, ExpenseCategory } from "@/generated/prisma/enums";
 
-export type { Currency };
+export type { Currency, ExpenseCategory };
 
 export interface MonthlyExpenseWithExpense {
   id: string;
@@ -17,6 +17,7 @@ export interface MonthlyExpenseWithExpense {
     name: string;
     dueDay: number;
     currency: Currency;
+    category: ExpenseCategory;
   };
 }
 
@@ -26,6 +27,7 @@ export interface CreateExpenseInput {
   dueDay: number;
   month: string;
   currency: Currency;
+  category: ExpenseCategory;
 }
 
 export interface CreateExpenseResult {
@@ -61,6 +63,11 @@ export async function createExpense(input: CreateExpenseInput): Promise<CreateEx
     return { success: false, error: "Currency must be ARS or USD" };
   }
 
+  const validCategories = ["CREDIT_CARD", "SERVICE", "RENT", "INSURANCE", "TAX", "SUBSCRIPTION", "BUILDING_FEE", "OTHER"];
+  if (!input.category || !validCategories.includes(input.category)) {
+    return { success: false, error: "Invalid category" };
+  }
+
   try {
     // Create Expense and MonthlyExpense in a transaction
     await prisma.$transaction(async (tx) => {
@@ -71,6 +78,7 @@ export async function createExpense(input: CreateExpenseInput): Promise<CreateEx
           amount: input.amount,
           dueDay: input.dueDay,
           currency: input.currency,
+          category: input.category,
         },
       });
 
@@ -99,6 +107,7 @@ export interface UpdateExpenseInput {
   amount: number;
   dueDay: number;
   currency: Currency;
+  category: ExpenseCategory;
 }
 
 export interface UpdateExpenseResult {
@@ -130,6 +139,11 @@ export async function updateExpense(input: UpdateExpenseInput): Promise<UpdateEx
     return { success: false, error: "Currency must be ARS or USD" };
   }
 
+  const validCategories = ["CREDIT_CARD", "SERVICE", "RENT", "INSURANCE", "TAX", "SUBSCRIPTION", "BUILDING_FEE", "OTHER"];
+  if (!input.category || !validCategories.includes(input.category)) {
+    return { success: false, error: "Invalid category" };
+  }
+
   try {
     // Verify ownership before updating
     const expense = await prisma.expense.findUnique({
@@ -157,6 +171,7 @@ export async function updateExpense(input: UpdateExpenseInput): Promise<UpdateEx
           amount: input.amount,
           dueDay: input.dueDay,
           currency: input.currency,
+          category: input.category,
         },
       });
 
@@ -280,6 +295,7 @@ export async function getMonthlyExpenses(month: string): Promise<MonthlyExpenseW
           name: true,
           dueDay: true,
           currency: true,
+          category: true,
         },
       },
     },
@@ -301,6 +317,7 @@ export async function getMonthlyExpenses(month: string): Promise<MonthlyExpenseW
       name: e.expense.name,
       dueDay: e.expense.dueDay,
       currency: e.expense.currency,
+      category: e.expense.category,
     },
   }));
 }
@@ -311,6 +328,7 @@ export interface PreviousMonthExpense {
   amount: string;
   dueDay: number;
   currency: Currency;
+  category: ExpenseCategory;
 }
 
 export async function getPreviousMonthExpenses(currentMonth: string): Promise<PreviousMonthExpense[]> {
@@ -337,6 +355,7 @@ export async function getPreviousMonthExpenses(currentMonth: string): Promise<Pr
           name: true,
           dueDay: true,
           currency: true,
+          category: true,
         },
       },
     },
@@ -353,6 +372,7 @@ export async function getPreviousMonthExpenses(currentMonth: string): Promise<Pr
     amount: e.amount.toString(),
     dueDay: e.expense.dueDay,
     currency: e.expense.currency,
+    category: e.expense.category,
   }));
 }
 

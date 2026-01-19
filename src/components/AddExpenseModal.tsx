@@ -1,7 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { createExpense, Currency } from "@/app/dashboard/actions";
+import { createExpense, Currency, ExpenseCategory } from "@/app/dashboard/actions";
+
+const CATEGORY_OPTIONS: { value: ExpenseCategory; label: string }[] = [
+  { value: "CREDIT_CARD", label: "credit card" },
+  { value: "SERVICE", label: "service" },
+  { value: "RENT", label: "rent" },
+  { value: "INSURANCE", label: "insurance" },
+  { value: "TAX", label: "tax" },
+  { value: "SUBSCRIPTION", label: "subscription" },
+  { value: "BUILDING_FEE", label: "building fee" },
+  { value: "OTHER", label: "other" },
+];
 
 interface AddExpenseModalProps {
   currentMonth: string;
@@ -18,6 +29,7 @@ export default function AddExpenseModal({
   const [amount, setAmount] = useState("");
   const [dueDay, setDueDay] = useState("");
   const [currency, setCurrency] = useState<Currency>("ARS");
+  const [category, setCategory] = useState<ExpenseCategory>("OTHER");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -52,6 +64,7 @@ export default function AddExpenseModal({
         dueDay: dueDayNum,
         month: currentMonth,
         currency,
+        category,
       });
 
       if (result.error) {
@@ -138,6 +151,25 @@ export default function AddExpenseModal({
               placeholder="1-31"
               disabled={isSubmitting}
             />
+          </div>
+
+          <div className="space-y-1">
+            <label htmlFor="category" className="block text-sm text-[#737373]">
+              category
+            </label>
+            <select
+              id="category"
+              value={category}
+              onChange={(e) => setCategory(e.target.value as ExpenseCategory)}
+              className="w-full px-3 py-3 text-base text-[#171717] bg-white border border-[#e5e5e5] focus:border-[#171717] focus:outline-none"
+              disabled={isSubmitting}
+            >
+              {CATEGORY_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-2">

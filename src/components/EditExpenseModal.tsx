@@ -1,7 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { updateExpense, MonthlyExpenseWithExpense, Currency } from "@/app/dashboard/actions";
+import { updateExpense, MonthlyExpenseWithExpense, Currency, ExpenseCategory } from "@/app/dashboard/actions";
+
+const CATEGORY_OPTIONS: { value: ExpenseCategory; label: string }[] = [
+  { value: "CREDIT_CARD", label: "credit card" },
+  { value: "SERVICE", label: "service" },
+  { value: "RENT", label: "rent" },
+  { value: "INSURANCE", label: "insurance" },
+  { value: "TAX", label: "tax" },
+  { value: "SUBSCRIPTION", label: "subscription" },
+  { value: "BUILDING_FEE", label: "building fee" },
+  { value: "OTHER", label: "other" },
+];
 
 interface EditExpenseModalProps {
   expense: MonthlyExpenseWithExpense;
@@ -18,6 +29,7 @@ export default function EditExpenseModal({
   const [amount, setAmount] = useState(expense.amount);
   const [dueDay, setDueDay] = useState(expense.expense.dueDay.toString());
   const [currency, setCurrency] = useState<Currency>(expense.expense.currency);
+  const [category, setCategory] = useState<ExpenseCategory>(expense.expense.category);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -53,6 +65,7 @@ export default function EditExpenseModal({
         amount: amountNum,
         dueDay: dueDayNum,
         currency,
+        category,
       });
 
       if (result.error) {
@@ -139,6 +152,25 @@ export default function EditExpenseModal({
               placeholder="1-31"
               disabled={isSubmitting}
             />
+          </div>
+
+          <div className="space-y-1">
+            <label htmlFor="category" className="block text-sm text-[#737373]">
+              category
+            </label>
+            <select
+              id="category"
+              value={category}
+              onChange={(e) => setCategory(e.target.value as ExpenseCategory)}
+              className="w-full px-3 py-3 text-base text-[#171717] bg-white border border-[#e5e5e5] focus:border-[#171717] focus:outline-none"
+              disabled={isSubmitting}
+            >
+              {CATEGORY_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-2">
