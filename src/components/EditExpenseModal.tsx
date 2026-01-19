@@ -66,6 +66,11 @@ export default function EditExpenseModal({
     expense.expense.paidWithCardId || ""
   );
 
+  // Credit Card category linked card
+  const [linkedCreditCardId, setLinkedCreditCardId] = useState(
+    expense.expense.linkedCreditCardId || ""
+  );
+
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -105,6 +110,7 @@ export default function EditExpenseModal({
         paymentMethod: paymentMethod || null,
         paymentSourceId: paymentSourceId || null,
         paidWithCardId: paidWithCardId || null,
+        linkedCreditCardId: linkedCreditCardId || null,
       });
 
       if (result.error) {
@@ -129,6 +135,28 @@ export default function EditExpenseModal({
     }
     if (value === "CREDIT_CARD" || value === "") {
       setPaymentSourceId("");
+    }
+  };
+
+  // Handle category change - clear linkedCreditCardId if not CREDIT_CARD
+  const handleCategoryChange = (value: ExpenseCategory) => {
+    setCategory(value);
+    if (value !== "CREDIT_CARD") {
+      setLinkedCreditCardId("");
+    }
+  };
+
+  // Handle linked credit card selection - auto-fill name and dueDay
+  const handleLinkedCardChange = (cardId: string) => {
+    setLinkedCreditCardId(cardId);
+    if (cardId) {
+      const card = creditCards.find((c) => c.id === cardId);
+      if (card) {
+        // Auto-fill name with card name (user can still edit)
+        setName(card.institutionName + " - " + card.name);
+        // Auto-fill due day from card
+        setDueDay(card.dueDay.toString());
+      }
     }
   };
 
@@ -212,7 +240,7 @@ export default function EditExpenseModal({
             <select
               id="category"
               value={category}
-              onChange={(e) => setCategory(e.target.value as ExpenseCategory)}
+              onChange={(e) => handleCategoryChange(e.target.value as ExpenseCategory)}
               className="w-full px-3 py-3 text-base text-[#171717] bg-white border border-[#e5e5e5] focus:border-[#171717] focus:outline-none"
               disabled={isSubmitting}
             >
@@ -223,6 +251,30 @@ export default function EditExpenseModal({
               ))}
             </select>
           </div>
+
+          {/* Show card selector when category is Credit Card */}
+          {category === "CREDIT_CARD" && (
+            <div className="space-y-1">
+              <label htmlFor="linkedCreditCardId" className="block text-sm text-[#737373]">
+                credit card
+              </label>
+              <select
+                id="linkedCreditCardId"
+                value={linkedCreditCardId}
+                onChange={(e) => handleLinkedCardChange(e.target.value)}
+                className="w-full px-3 py-3 text-base text-[#171717] bg-white border border-[#e5e5e5] focus:border-[#171717] focus:outline-none"
+                disabled={isSubmitting}
+              >
+                <option value="">select a card</option>
+                {creditCards.map((card) => (
+                  <option key={card.id} value={card.id}>
+                    {card.institutionName} - {card.name}
+                    {card.lastFourDigits && ` (****${card.lastFourDigits})`}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* More Options Collapsible Section */}
           <div className="border-t border-[#e5e5e5] pt-4">

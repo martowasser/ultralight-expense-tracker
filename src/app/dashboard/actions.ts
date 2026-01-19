@@ -21,6 +21,7 @@ export interface MonthlyExpenseWithExpense {
     paymentMethod: PaymentMethod | null;
     paymentSourceId: string | null;
     paidWithCardId: string | null;
+    linkedCreditCardId: string | null;
   };
 }
 
@@ -34,6 +35,7 @@ export interface CreateExpenseInput {
   paymentMethod?: PaymentMethod | null;
   paymentSourceId?: string | null;
   paidWithCardId?: string | null;
+  linkedCreditCardId?: string | null;
 }
 
 export interface CreateExpenseResult {
@@ -100,6 +102,16 @@ export async function createExpense(input: CreateExpenseInput): Promise<CreateEx
       }
     }
 
+    // Validate linkedCreditCardId if provided
+    if (input.linkedCreditCardId) {
+      const linkedCard = await prisma.creditCard.findUnique({
+        where: { id: input.linkedCreditCardId },
+      });
+      if (!linkedCard || linkedCard.userId !== session.user.id) {
+        return { success: false, error: "Linked credit card not found" };
+      }
+    }
+
     // Create Expense and MonthlyExpense in a transaction
     await prisma.$transaction(async (tx) => {
       const expense = await tx.expense.create({
@@ -113,6 +125,7 @@ export async function createExpense(input: CreateExpenseInput): Promise<CreateEx
           paymentMethod: input.paymentMethod || null,
           paymentSourceId: input.paymentSourceId || null,
           paidWithCardId: input.paidWithCardId || null,
+          linkedCreditCardId: input.linkedCreditCardId || null,
         },
       });
 
@@ -145,6 +158,7 @@ export interface UpdateExpenseInput {
   paymentMethod?: PaymentMethod | null;
   paymentSourceId?: string | null;
   paidWithCardId?: string | null;
+  linkedCreditCardId?: string | null;
 }
 
 export interface UpdateExpenseResult {
@@ -224,6 +238,16 @@ export async function updateExpense(input: UpdateExpenseInput): Promise<UpdateEx
       }
     }
 
+    // Validate linkedCreditCardId if provided
+    if (input.linkedCreditCardId) {
+      const linkedCard = await prisma.creditCard.findUnique({
+        where: { id: input.linkedCreditCardId },
+      });
+      if (!linkedCard || linkedCard.userId !== session.user.id) {
+        return { success: false, error: "Linked credit card not found" };
+      }
+    }
+
     // Update Expense and MonthlyExpense in a transaction
     await prisma.$transaction(async (tx) => {
       await tx.expense.update({
@@ -237,6 +261,7 @@ export async function updateExpense(input: UpdateExpenseInput): Promise<UpdateEx
           paymentMethod: input.paymentMethod || null,
           paymentSourceId: input.paymentSourceId || null,
           paidWithCardId: input.paidWithCardId || null,
+          linkedCreditCardId: input.linkedCreditCardId || null,
         },
       });
 
@@ -364,6 +389,7 @@ export async function getMonthlyExpenses(month: string): Promise<MonthlyExpenseW
           paymentMethod: true,
           paymentSourceId: true,
           paidWithCardId: true,
+          linkedCreditCardId: true,
         },
       },
     },
@@ -389,6 +415,7 @@ export async function getMonthlyExpenses(month: string): Promise<MonthlyExpenseW
       paymentMethod: e.expense.paymentMethod,
       paymentSourceId: e.expense.paymentSourceId,
       paidWithCardId: e.expense.paidWithCardId,
+      linkedCreditCardId: e.expense.linkedCreditCardId,
     },
   }));
 }
@@ -595,6 +622,7 @@ export interface CreditCardOption {
   name: string;
   lastFourDigits: string | null;
   institutionName: string;
+  dueDay: number;
 }
 
 export async function getCreditCardsForSelect(): Promise<CreditCardOption[]> {
@@ -624,5 +652,6 @@ export async function getCreditCardsForSelect(): Promise<CreditCardOption[]> {
     name: card.name,
     lastFourDigits: card.lastFourDigits,
     institutionName: card.institution.name,
+    dueDay: card.dueDay,
   }));
 }
