@@ -119,31 +119,37 @@ export default function CloneExpensesModal({
             </div>
           ) : (
             <div className="space-y-4">
-              {previousExpenses.map((expense) => (
-                <div key={expense.expenseId} className="py-3 border-b border-[#e5e5e5] last:border-b-0">
-                  <div className="flex items-start justify-between gap-4 mb-2">
-                    <div>
-                      <p className="text-sm text-[#171717]">{expense.name}</p>
-                      <p className="text-xs text-[#a3a3a3]">due day {expense.dueDay}</p>
+              {previousExpenses.map((expense) => {
+                const isUSD = expense.currency === "USD";
+                const formattedAmount = isUSD
+                  ? `US$${parseFloat(expense.amount).toFixed(2)}`
+                  : `$${parseFloat(expense.amount).toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                return (
+                  <div key={expense.expenseId} className="py-3 border-b border-[#e5e5e5] last:border-b-0">
+                    <div className="flex items-start justify-between gap-4 mb-2">
+                      <div>
+                        <p className="text-sm text-[#171717]">{expense.name}</p>
+                        <p className="text-xs text-[#a3a3a3]">due day {expense.dueDay}</p>
+                      </div>
+                      <p className="text-sm text-[#a3a3a3] tabular-nums">
+                        {formattedAmount}
+                      </p>
                     </div>
-                    <p className="text-sm text-[#a3a3a3] tabular-nums">
-                      ${parseFloat(expense.amount).toFixed(2)}
-                    </p>
+                    <div className="space-y-1">
+                      <label className="block text-xs text-[#a3a3a3]">new amount ({expense.currency})</label>
+                      <input
+                        type="number"
+                        value={amounts[expense.expenseId] || ""}
+                        onChange={(e) => handleAmountChange(expense.expenseId, e.target.value)}
+                        step="0.01"
+                        min="0.01"
+                        disabled={isSubmitting}
+                        className="w-full px-3 py-3 text-base text-[#171717] bg-white border border-[#e5e5e5] focus:border-[#171717] focus:outline-none disabled:opacity-50 tabular-nums"
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-1">
-                    <label className="block text-xs text-[#a3a3a3]">new amount</label>
-                    <input
-                      type="number"
-                      value={amounts[expense.expenseId] || ""}
-                      onChange={(e) => handleAmountChange(expense.expenseId, e.target.value)}
-                      step="0.01"
-                      min="0.01"
-                      disabled={isSubmitting}
-                      className="w-full px-3 py-3 text-base text-[#171717] bg-white border border-[#e5e5e5] focus:border-[#171717] focus:outline-none disabled:opacity-50 tabular-nums"
-                    />
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

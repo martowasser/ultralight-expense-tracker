@@ -3,13 +3,14 @@ import { MonthlyExpenseWithExpense } from "@/app/dashboard/actions";
 interface ExpenseListProps {
   expenses: MonthlyExpenseWithExpense[];
   displayMonth: string;
+  exchangeRate: number;
   onEdit: (expense: MonthlyExpenseWithExpense) => void;
   onDelete: (expense: MonthlyExpenseWithExpense) => void;
   onTogglePaid: (expense: MonthlyExpenseWithExpense) => void;
   togglingId: string | null;
 }
 
-export default function ExpenseList({ expenses, displayMonth, onEdit, onDelete, onTogglePaid, togglingId }: ExpenseListProps) {
+export default function ExpenseList({ expenses, displayMonth, exchangeRate, onEdit, onDelete, onTogglePaid, togglingId }: ExpenseListProps) {
   if (expenses.length === 0) {
     return (
       <div className="py-12 text-center">
@@ -21,10 +22,25 @@ export default function ExpenseList({ expenses, displayMonth, onEdit, onDelete, 
     );
   }
 
+  const formatAmount = (amount: string, currency: string): string => {
+    const num = parseFloat(amount);
+    if (currency === "USD") {
+      return `US$${num.toFixed(2)}`;
+    }
+    return `$${num.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+
+  const getArsEquivalent = (amount: string): string => {
+    const usdAmount = parseFloat(amount);
+    const arsAmount = usdAmount * exchangeRate;
+    return `≈ $${arsAmount.toLocaleString("es-AR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} ARS`;
+  };
+
   return (
     <div className="space-y-1">
       {expenses.map((expense) => {
         const isToggling = togglingId === expense.id;
+        const isUSD = expense.expense.currency === "USD";
         return (
           <div
             key={expense.id}
@@ -51,9 +67,16 @@ export default function ExpenseList({ expenses, displayMonth, onEdit, onDelete, 
                 </div>
               </div>
               <div className="flex items-center gap-4 pt-2.5">
-                <p className={`text-sm tabular-nums ${expense.isPaid ? "text-[#a3a3a3] line-through" : "text-[#171717]"}`}>
-                  ${parseFloat(expense.amount).toFixed(2)}
-                </p>
+                <div className="text-right">
+                  <p className={`text-sm tabular-nums ${expense.isPaid ? "text-[#a3a3a3] line-through" : "text-[#171717]"}`}>
+                    {formatAmount(expense.amount, expense.expense.currency)}
+                  </p>
+                  {isUSD && (
+                    <p className="text-xs text-[#a3a3a3] mt-0.5">
+                      {getArsEquivalent(expense.amount)}
+                    </p>
+                  )}
+                </div>
                 <div className="flex gap-2">
                   <button
                     onClick={() => onEdit(expense)}

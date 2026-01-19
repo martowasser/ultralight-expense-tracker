@@ -2,6 +2,9 @@
 
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { Currency } from "@/generated/prisma/enums";
+
+export type { Currency };
 
 export interface MonthlyExpenseWithExpense {
   id: string;
@@ -13,6 +16,7 @@ export interface MonthlyExpenseWithExpense {
     id: string;
     name: string;
     dueDay: number;
+    currency: Currency;
   };
 }
 
@@ -21,6 +25,7 @@ export interface CreateExpenseInput {
   amount: number;
   dueDay: number;
   month: string;
+  currency: Currency;
 }
 
 export interface CreateExpenseResult {
@@ -52,6 +57,10 @@ export async function createExpense(input: CreateExpenseInput): Promise<CreateEx
     return { success: false, error: "Invalid month format" };
   }
 
+  if (!input.currency || !["ARS", "USD"].includes(input.currency)) {
+    return { success: false, error: "Currency must be ARS or USD" };
+  }
+
   try {
     // Create Expense and MonthlyExpense in a transaction
     await prisma.$transaction(async (tx) => {
@@ -61,6 +70,7 @@ export async function createExpense(input: CreateExpenseInput): Promise<CreateEx
           name: input.name.trim(),
           amount: input.amount,
           dueDay: input.dueDay,
+          currency: input.currency,
         },
       });
 
@@ -88,6 +98,7 @@ export interface UpdateExpenseInput {
   name: string;
   amount: number;
   dueDay: number;
+  currency: Currency;
 }
 
 export interface UpdateExpenseResult {
@@ -113,6 +124,10 @@ export async function updateExpense(input: UpdateExpenseInput): Promise<UpdateEx
 
   if (typeof input.dueDay !== "number" || input.dueDay < 1 || input.dueDay > 31) {
     return { success: false, error: "Due day must be between 1 and 31" };
+  }
+
+  if (!input.currency || !["ARS", "USD"].includes(input.currency)) {
+    return { success: false, error: "Currency must be ARS or USD" };
   }
 
   try {
@@ -141,6 +156,7 @@ export async function updateExpense(input: UpdateExpenseInput): Promise<UpdateEx
           name: input.name.trim(),
           amount: input.amount,
           dueDay: input.dueDay,
+          currency: input.currency,
         },
       });
 
@@ -263,6 +279,7 @@ export async function getMonthlyExpenses(month: string): Promise<MonthlyExpenseW
           id: true,
           name: true,
           dueDay: true,
+          currency: true,
         },
       },
     },
@@ -283,6 +300,7 @@ export async function getMonthlyExpenses(month: string): Promise<MonthlyExpenseW
       id: e.expense.id,
       name: e.expense.name,
       dueDay: e.expense.dueDay,
+      currency: e.expense.currency,
     },
   }));
 }
@@ -292,6 +310,7 @@ export interface PreviousMonthExpense {
   name: string;
   amount: string;
   dueDay: number;
+  currency: Currency;
 }
 
 export async function getPreviousMonthExpenses(currentMonth: string): Promise<PreviousMonthExpense[]> {
@@ -317,6 +336,7 @@ export async function getPreviousMonthExpenses(currentMonth: string): Promise<Pr
           id: true,
           name: true,
           dueDay: true,
+          currency: true,
         },
       },
     },
@@ -332,6 +352,7 @@ export async function getPreviousMonthExpenses(currentMonth: string): Promise<Pr
     name: e.expense.name,
     amount: e.amount.toString(),
     dueDay: e.expense.dueDay,
+    currency: e.expense.currency,
   }));
 }
 
@@ -425,4 +446,18 @@ export async function cloneExpenses(input: CloneExpensesInput): Promise<CloneExp
     console.error("Error cloning expenses:", error);
     return { success: false, error: "Failed to clone expenses" };
   }
+}
+
+export async function getExchangeRate(): Promise<number> {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    return 1200; // Default rate
+  }
+
+  const settings = await prisma.userSettings.findUnique({
+    where: { userId: session.user.id },
+  });
+
+  return settings?.usdToArsRate ? Number(settings.usdToArsRate) : 1200;
 }

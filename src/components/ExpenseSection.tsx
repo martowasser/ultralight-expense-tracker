@@ -14,12 +14,14 @@ interface ExpenseSectionProps {
   expenses: MonthlyExpenseWithExpense[];
   currentMonth: string;
   displayMonth: string;
+  exchangeRate: number;
 }
 
 export default function ExpenseSection({
   expenses,
   currentMonth,
   displayMonth,
+  exchangeRate,
 }: ExpenseSectionProps) {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isCloneModalOpen, setIsCloneModalOpen] = useState(false);
@@ -29,19 +31,25 @@ export default function ExpenseSection({
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const router = useRouter();
 
-  // Calculate totals from expenses
-  const { paidTotal, unpaidTotal } = useMemo(() => {
+  // Calculate totals from expenses by currency
+  const totals = useMemo(() => {
     return expenses.reduce(
       (acc, expense) => {
         const amount = parseFloat(expense.amount);
+        const currency = expense.expense.currency;
+        const currencyKey = currency === "USD" ? "usd" : "ars";
+
         if (expense.isPaid) {
-          acc.paidTotal += amount;
+          acc[currencyKey].paid += amount;
         } else {
-          acc.unpaidTotal += amount;
+          acc[currencyKey].unpaid += amount;
         }
         return acc;
       },
-      { paidTotal: 0, unpaidTotal: 0 }
+      {
+        ars: { paid: 0, unpaid: 0 },
+        usd: { paid: 0, unpaid: 0 },
+      }
     );
   }, [expenses]);
 
@@ -100,7 +108,7 @@ export default function ExpenseSection({
 
   return (
     <div className="space-y-6">
-      <ExpenseTotals paidTotal={paidTotal} unpaidTotal={unpaidTotal} />
+      <ExpenseTotals totals={totals} exchangeRate={exchangeRate} />
 
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
         <span className="text-sm text-[#737373]">expenses</span>
@@ -123,6 +131,7 @@ export default function ExpenseSection({
       <ExpenseList
         expenses={expenses}
         displayMonth={displayMonth}
+        exchangeRate={exchangeRate}
         onEdit={handleEdit}
         onDelete={handleDelete}
         onTogglePaid={handleTogglePaid}

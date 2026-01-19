@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { updateExpense, MonthlyExpenseWithExpense } from "@/app/dashboard/actions";
+import { updateExpense, MonthlyExpenseWithExpense, Currency } from "@/app/dashboard/actions";
 
 interface EditExpenseModalProps {
   expense: MonthlyExpenseWithExpense;
@@ -17,6 +17,7 @@ export default function EditExpenseModal({
   const [name, setName] = useState(expense.expense.name);
   const [amount, setAmount] = useState(expense.amount);
   const [dueDay, setDueDay] = useState(expense.expense.dueDay.toString());
+  const [currency, setCurrency] = useState<Currency>(expense.expense.currency);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -51,6 +52,7 @@ export default function EditExpenseModal({
         name: name.trim(),
         amount: amountNum,
         dueDay: dueDayNum,
+        currency,
       });
 
       if (result.error) {
@@ -95,19 +97,31 @@ export default function EditExpenseModal({
 
           <div className="space-y-1">
             <label htmlFor="amount" className="block text-sm text-[#737373]">
-              amount ($)
+              amount
             </label>
-            <input
-              type="number"
-              id="amount"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              step="0.01"
-              min="0.01"
-              className="w-full px-3 py-3 text-base text-[#171717] bg-white border border-[#e5e5e5] focus:border-[#171717] focus:outline-none"
-              placeholder="0.00"
-              disabled={isSubmitting}
-            />
+            <div className="flex gap-2">
+              <input
+                type="number"
+                id="amount"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                step="0.01"
+                min="0.01"
+                className="flex-1 px-3 py-3 text-base text-[#171717] bg-white border border-[#e5e5e5] focus:border-[#171717] focus:outline-none"
+                placeholder="0.00"
+                disabled={isSubmitting}
+              />
+              <select
+                id="currency"
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value as Currency)}
+                className="w-24 px-3 py-3 text-base text-[#171717] bg-white border border-[#e5e5e5] focus:border-[#171717] focus:outline-none"
+                disabled={isSubmitting}
+              >
+                <option value="ARS">ARS</option>
+                <option value="USD">USD</option>
+              </select>
+            </div>
           </div>
 
           <div className="space-y-1">

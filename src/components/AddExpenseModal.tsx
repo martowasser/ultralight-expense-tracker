@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { createExpense } from "@/app/dashboard/actions";
+import { createExpense, Currency } from "@/app/dashboard/actions";
 
 interface AddExpenseModalProps {
   currentMonth: string;
@@ -17,6 +17,7 @@ export default function AddExpenseModal({
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
   const [dueDay, setDueDay] = useState("");
+  const [currency, setCurrency] = useState<Currency>("ARS");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -50,6 +51,7 @@ export default function AddExpenseModal({
         amount: amountNum,
         dueDay: dueDayNum,
         month: currentMonth,
+        currency,
       });
 
       if (result.error) {
@@ -94,19 +96,31 @@ export default function AddExpenseModal({
 
           <div className="space-y-1">
             <label htmlFor="amount" className="block text-sm text-[#737373]">
-              amount ($)
+              amount
             </label>
-            <input
-              type="number"
-              id="amount"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              step="0.01"
-              min="0.01"
-              className="w-full px-3 py-3 text-base text-[#171717] bg-white border border-[#e5e5e5] focus:border-[#171717] focus:outline-none"
-              placeholder="0.00"
-              disabled={isSubmitting}
-            />
+            <div className="flex gap-2">
+              <input
+                type="number"
+                id="amount"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                step="0.01"
+                min="0.01"
+                className="flex-1 px-3 py-3 text-base text-[#171717] bg-white border border-[#e5e5e5] focus:border-[#171717] focus:outline-none"
+                placeholder="0.00"
+                disabled={isSubmitting}
+              />
+              <select
+                id="currency"
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value as Currency)}
+                className="w-24 px-3 py-3 text-base text-[#171717] bg-white border border-[#e5e5e5] focus:border-[#171717] focus:outline-none"
+                disabled={isSubmitting}
+              >
+                <option value="ARS">ARS</option>
+                <option value="USD">USD</option>
+              </select>
+            </div>
           </div>
 
           <div className="space-y-1">
