@@ -105,3 +105,30 @@ Started: Sun Jan 18 22:23:15 -03 2026
   - Input masking for lastFourDigits: use onChange with regex replace to allow only digits
   - Cards are simpler than institutions (no nested entities), so no cascade warnings needed
 ---
+
+## 2026-01-18 23:55 - US-023
+- What was implemented:
+  - Multi-currency support for expenses (ARS/USD)
+  - Currency selector added to Add and Edit expense modals
+  - ExpenseList shows currency with proper formatting (US$ for USD, $ for ARS)
+  - USD expenses show approximate ARS equivalent below the amount
+  - ExpenseTotals shows separate ARS and USD totals
+  - When USD expenses exist, combined ARS equivalent totals are shown
+  - Clone expenses modal shows currency for each expense
+  - getExchangeRate() action fetches rate from UserSettings (default 1200)
+- Files changed:
+  - src/app/dashboard/actions.ts (updated - added currency to types, exports Currency, getExchangeRate)
+  - src/app/dashboard/page.tsx (updated - fetches exchange rate)
+  - src/components/AddExpenseModal.tsx (updated - currency selector)
+  - src/components/EditExpenseModal.tsx (updated - currency selector)
+  - src/components/ExpenseList.tsx (updated - currency display with ARS equivalent)
+  - src/components/ExpenseSection.tsx (updated - currency-aware totals)
+  - src/components/ExpenseTotals.tsx (updated - separate ARS/USD totals)
+  - src/components/CloneExpensesModal.tsx (updated - shows currency per expense)
+- **Learnings for future iterations:**
+  - Import Currency enum from `@/generated/prisma/enums` (not just `@/generated/prisma`)
+  - Re-export types from actions.ts for client components: `export type { Currency }`
+  - Use `toLocaleString("es-AR", {...})` for ARS formatting
+  - Exchange rate is stored in UserSettings.usdToArsRate with default 1200
+  - When adding new fields to expense interfaces, update both MonthlyExpenseWithExpense and PreviousMonthExpense
+---
