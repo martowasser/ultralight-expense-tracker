@@ -1,432 +1,83 @@
 # Ralph Progress Log
-Started: Fri Jan 16 23:20:34 -03 2026
+Started: Sun Jan 18 22:23:15 -03 2026
 ---
 
 ## Codebase Patterns
-- Next.js 16 with App Router (src/app directory)
-- Tailwind CSS 4 using @tailwindcss/postcss plugin
-- ESLint 9 flat config (eslint.config.mjs) - use typescript-eslint for TS/TSX linting
-- `next lint` command not available in Next.js 16, use `eslint` directly
-- Prisma 7 requires driver adapter (e.g., @prisma/adapter-pg) - cannot use PrismaClient() without adapter
-- Prisma client generated to src/generated/prisma/client.ts - import from "@/generated/prisma/client"
-- Use singleton pattern for PrismaClient in src/lib/prisma.ts
-- NextAuth v5 configured in src/auth.ts - use { auth, signIn, signOut } exports
-- PostgreSQL running in Docker on port 5434 (container: expense-tracker-postgres)
-- In Next.js 16, searchParams is a Promise - use `searchParams: Promise<{ key?: string }>` and `await searchParams`
-- Server actions in src/app/dashboard/actions.ts - export types for UI components
-- Prisma Decimal fields need .toString() conversion before returning from server actions
-- Use Prisma $transaction for atomic multi-record operations
-- Wrap server component lists with client component for modal state management (e.g., ExpenseSection)
-- Use router.refresh() after mutations to refetch server data
-- Mobile responsive: Use `sm:` breakpoint (640px), bottom sheet pattern for modals, card layout for lists
-- Touch targets: Always use min-h-[44px] and min-w-[44px] for buttons and interactive elements
-- iOS input zoom: Use text-base (16px) minimum font size on mobile inputs
-- Quiet Minimalism design: #fafafa bg, #171717 text, #737373/#a3a3a3 muted, lowercase text, max-w-[640px] centered layout
+- Use `npx prisma migrate dev --name <name>` to create and apply migrations
+- Prisma client is generated to `src/generated/prisma/` (gitignored)
+- PostgreSQL runs in Docker container `expense-tracker-postgres` on port 5434
+- Always use `@default()` for new required fields to preserve existing data
+- Use `onDelete: SetNull` for optional foreign keys to prevent cascade issues
+- Use `onDelete: Cascade` for required relationships (like userId)
+- Run `npx prisma generate` after pulling schema changes to regenerate client
+- Server actions pattern: use `"use server"` directive, auth check, validate input, return `{ success, error? }`
+- Client components: use `"use client"`, useState for modal state, router.refresh() after mutations
+- Modal pattern: fixed inset-0 bg-black/30 overlay, items-end sm:items-center for mobile sheet
+- Import enums from `@/generated/prisma/enums`, types from actions.ts files
 
 ---
 
-## 2026-01-16 - US-001
+## 2026-01-18 22:25 - US-029
 - What was implemented:
-  - Verified Next.js 16 project with App Router structure
-  - Configured ESLint 9 with flat config format (eslint.config.mjs)
-  - Added .gitignore for node_modules, .next, and other build artifacts
-  - Updated package.json lint script to use eslint directly
+  - Added comprehensive Prisma schema with new models for institutions, accounts, credit cards, and user settings
+  - Created enums: InstitutionType, Currency, ExpenseCategory, PaymentMethod, CardBrand
+  - Created models: Institution, Account, CreditCard, UserSettings, ExpenseTag
+  - Enhanced Expense model with new fields: category, currency, paymentMethod, paymentSourceId, paidWithCardId, linkedCreditCardId, isActive
+  - Migration preserves existing data with defaults (category=OTHER, currency=ARS)
 - Files changed:
-  - eslint.config.mjs (created)
-  - .gitignore (created)
-  - package.json (lint script updated)
-  - prd.json (marked US-001 as passes: true)
+  - prisma/schema.prisma (updated with new schema)
+  - prisma/migrations/20260119012517_add_comprehensive_expense_schema/migration.sql (new migration)
 - **Learnings for future iterations:**
-  - Next.js 16 does not include `next lint` command - must use eslint directly
-  - ESLint 9 requires flat config format (eslint.config.mjs), not .eslintrc.json
-  - Use typescript-eslint for TypeScript linting in ESLint 9 flat config
-  - eslint-config-next has compatibility issues with FlatCompat in ESLint 9
+  - Docker container `expense-tracker-postgres` needs to be started before running migrations
+  - The Prisma client output is in `src/generated/prisma/` and is gitignored
+  - All new fields have defaults so existing data is preserved during migrations
+  - Use named relations like `@relation("PaymentSourceAccount")` when a model has multiple relations to the same target
 ---
 
-## 2026-01-16 - US-002
+## 2026-01-18 22:35 - US-020
 - What was implemented:
-  - Installed Prisma CLI and @prisma/client
-  - Initialized Prisma with PostgreSQL provider
-  - Added User model placeholder with id, email, createdAt, updatedAt fields
-  - Configured Prisma 7 with @prisma/adapter-pg driver adapter
-  - Created src/lib/prisma.ts with singleton pattern for PrismaClient
-  - Added src/generated/prisma to .gitignore
+  - Created /institutions page with full CRUD functionality
+  - Institutions grouped by type (Bank, Fintech, Crypto Exchange, Payment Platform)
+  - Add/Edit/Delete modals with confirmation for deletion
+  - Delete confirmation shows cascade warning (accounts, credit cards that will be deleted)
+  - Added navigation links in Header component to switch between expenses and institutions
 - Files changed:
-  - package.json (added prisma, @prisma/client, @prisma/adapter-pg, pg, dotenv, @types/pg)
-  - package-lock.json (updated)
-  - prisma/schema.prisma (created with User model)
-  - prisma.config.ts (created)
-  - src/lib/prisma.ts (created)
-  - .gitignore (added /src/generated/prisma)
-  - prd.json (marked US-002 as passes: true)
+  - src/app/institutions/page.tsx (new - server component page)
+  - src/app/institutions/actions.ts (new - server actions for CRUD)
+  - src/components/InstitutionSection.tsx (new - container with modal state)
+  - src/components/InstitutionList.tsx (new - list grouped by type)
+  - src/components/AddInstitutionModal.tsx (new - add form modal)
+  - src/components/EditInstitutionModal.tsx (new - edit form modal)
+  - src/components/DeleteInstitutionModal.tsx (new - delete confirmation with cascade warning)
+  - src/components/Header.tsx (updated - added navigation links)
 - **Learnings for future iterations:**
-  - Prisma 7 has breaking change: PrismaClient now requires adapter or accelerateUrl
-  - For PostgreSQL, use @prisma/adapter-pg with PrismaPg class
-  - prisma generate outputs to src/generated/prisma/client.ts (not index.ts)
-  - The generated client uses "prisma-client" provider, not "prisma-client-js"
+  - Header now has navigation links for expenses and institutions - add new pages here
+  - Use `_count` in Prisma includes to get related entity counts for cascade warnings
+  - Group items by category using reduce pattern, then render with ordered keys
+  - Keep modal components separate for each action (add/edit/delete) for clarity
 ---
 
-## 2026-01-17 - US-003
+## 2026-01-18 22:50 - US-021
 - What was implemented:
-  - Installed NextAuth.js v5 beta and bcryptjs for password hashing
-  - Updated User model in Prisma schema with password field (String)
-  - Ran Prisma migration successfully (add_user_password)
-  - Created src/auth.ts with NextAuth configuration using Credentials provider
-  - Created src/app/api/auth/[...nextauth]/route.ts for API route handler
-  - Created src/types/next-auth.d.ts for TypeScript type extensions
-  - All typecheck and lint checks pass
+  - Full account CRUD management within institutions
+  - Server actions for create, update, delete accounts (account-actions.ts)
+  - AddAccountModal: create account with name and currency (ARS/USD)
+  - EditAccountModal: modify account name and currency
+  - DeleteAccountModal: confirmation dialog for deletion
+  - Accounts displayed under their institution on the institutions page
+  - Updated InstitutionList to show "+" account button and account list
+  - Updated InstitutionSection to handle all account modals
 - Files changed:
-  - package.json (added next-auth, bcryptjs, @types/bcryptjs)
-  - package-lock.json (updated)
-  - prisma/schema.prisma (added password field to User model)
-  - prisma/migrations/20260117023613_add_user_password/ (created)
-  - src/auth.ts (created - NextAuth configuration)
-  - src/app/api/auth/[...nextauth]/route.ts (created)
-  - src/types/next-auth.d.ts (created)
-  - prd.json (marked US-003 as passes: true)
+  - src/app/institutions/account-actions.ts (new - server actions for accounts)
+  - src/app/institutions/actions.ts (updated - include accounts in getInstitutions, export InstitutionAccount type)
+  - src/components/AddAccountModal.tsx (new - add account form)
+  - src/components/EditAccountModal.tsx (new - edit account form)
+  - src/components/DeleteAccountModal.tsx (new - delete confirmation)
+  - src/components/InstitutionList.tsx (updated - display accounts under institutions)
+  - src/components/InstitutionSection.tsx (updated - handle account modals)
 - **Learnings for future iterations:**
-  - NextAuth v5 uses a simplified API: export { handlers, signIn, signOut, auth } from NextAuth()
-  - Credentials provider authorize function should return null for invalid credentials (not throw)
-  - Use bcryptjs (not bcrypt) for better Node.js compatibility
-  - NextAuth v5 route handler at src/app/api/auth/[...nextauth]/route.ts exports { GET, POST } from handlers
-  - Custom session fields require extending next-auth types in src/types/next-auth.d.ts
----
-
-## 2026-01-17 - US-004
-- What was implemented:
-  - Created login page at /login with email and password fields
-  - Used "use client" directive for client-side form handling
-  - Implemented signIn from next-auth/react with redirect: false
-  - Added error state to display "Invalid email or password" message
-  - Configured redirect to /dashboard on successful login
-  - Styled with Tailwind CSS matching existing patterns
-- Files changed:
-  - src/app/login/page.tsx (created)
-  - prd.json (marked US-004 as passes: true)
-- **Learnings for future iterations:**
-  - For client-side form handling in Next.js App Router, use "use client" directive
-  - Use signIn from "next-auth/react" (not from auth.ts) for client components
-  - Set redirect: false in signIn options to handle errors manually
-  - Check result?.error to detect authentication failures
----
-
-## 2026-01-17 - US-005
-- What was implemented:
-  - Created registration page at /register with email, password, and confirm password fields
-  - Added client-side validation (all fields required, passwords must match, min 6 chars)
-  - Created API route at /api/auth/register that creates users in database
-  - API validates email format, password length, and checks for existing users
-  - Passwords are hashed with bcryptjs before storing
-  - Redirect to /login after successful registration
-  - Added link to login page for existing users
-- Files changed:
-  - src/app/register/page.tsx (created)
-  - src/app/api/auth/register/route.ts (created)
-  - prd.json (marked US-005 as passes: true)
-- **Learnings for future iterations:**
-  - Registration API route pattern: validate -> check existing user -> hash password -> create user
-  - Use fetch() with JSON body to call API routes from client components
-  - Both client and server-side validation should be performed for security
----
-
-## 2026-01-17 - US-006
-- What was implemented:
-  - Created dashboard page at /dashboard that requires authentication
-  - Dashboard uses server-side auth() to check session and redirects to /login if not authenticated
-  - Created Header component (src/components/Header.tsx) showing user email and logout button
-  - Logout button calls signOut from next-auth/react with redirect to /login
-  - Dashboard is a server component, Header is a client component (for signOut interaction)
-- Files changed:
-  - src/app/dashboard/page.tsx (created)
-  - src/components/Header.tsx (created)
-  - prd.json (marked US-006 as passes: true)
-- **Learnings for future iterations:**
-  - Use auth() from src/auth.ts for server-side session checks in server components
-  - Use redirect() from next/navigation for server-side redirects
-  - For logout, use signOut from "next-auth/react" in client components
-  - Pattern: Server component checks auth and passes user data to client components as props
----
-
-## 2026-01-17 - US-007
-- What was implemented:
-  - Added Expense model with: id, userId, name (String), amount (Decimal), dueDay (Int), createdAt, updatedAt
-  - Added MonthlyExpense model with: id, expenseId, userId, month (String YYYY-MM), amount (Decimal), isPaid (Boolean default false), createdAt, updatedAt
-  - Set up relations: User hasMany Expense, User hasMany MonthlyExpense, Expense hasMany MonthlyExpense
-  - Added onDelete: Cascade for foreign key relations to clean up orphan records
-  - Added indexes for common queries: userId on Expense, (userId, month) and (expenseId, month) on MonthlyExpense
-  - Added unique constraint on (expenseId, month) to prevent duplicate monthly entries
-  - Migration ran successfully (20260117024526_add_expense_models)
-- Files changed:
-  - prisma/schema.prisma (added Expense and MonthlyExpense models, added relations to User)
-  - prisma/migrations/20260117024526_add_expense_models/ (created)
-  - prd.json (marked US-007 as passes: true)
-- **Learnings for future iterations:**
-  - Use Decimal type for monetary values in Prisma
-  - Add @@index for columns commonly used in WHERE clauses
-  - Use @@unique for composite constraints (e.g., one MonthlyExpense per expense per month)
-  - onDelete: Cascade ensures related records are deleted when parent is deleted
----
-
-## 2026-01-17 - US-008
-- What was implemented:
-  - Updated dashboard page to show current month and year (e.g., 'January 2026')
-  - Added URL query param support (?month=2026-01) for month selection
-  - Dashboard auto-redirects to include month param if missing or invalid
-  - Added helper functions: getCurrentMonth(), formatMonthDisplay(), isValidMonthFormat()
-  - In Next.js 16, searchParams is a Promise that must be awaited
-- Files changed:
-  - src/app/dashboard/page.tsx (updated with month header logic)
-  - prd.json (marked US-008 as passes: true)
-- **Learnings for future iterations:**
-  - In Next.js 16 App Router, searchParams prop is a Promise<{ [key]: string }> - must await it
-  - Use redirect() to ensure URL always reflects state (month param always present)
-  - toLocaleDateString("en-US", { month: "long", year: "numeric" }) formats month nicely
----
-
-## 2026-01-17 - US-009
-- What was implemented:
-  - Created MonthNavigation client component with Previous and Next buttons
-  - Buttons flank the month header in the dashboard
-  - Clicking Previous/Next updates URL query param to navigate months
-  - Used router.push() from next/navigation for client-side navigation
-  - Added helper functions getPreviousMonth() and getNextMonth() for date math
-- Files changed:
-  - src/components/MonthNavigation.tsx (created)
-  - src/app/dashboard/page.tsx (integrated MonthNavigation component)
-  - prd.json (marked US-009 as passes: true)
-- **Learnings for future iterations:**
-  - For client-side navigation in App Router, use useRouter() from "next/navigation" with router.push()
-  - Date manipulation for months: create Date, setMonth(+/-1), extract year/month from result
-  - Pattern: Server component fetches data, client component handles navigation/interaction
----
-
-## 2026-01-17 - US-010
-- What was implemented:
-  - Created server action in src/app/dashboard/actions.ts to fetch MonthlyExpense records
-  - Server action filters by userId and month, orders by expense.dueDay ascending
-  - Created ExpenseList component (src/components/ExpenseList.tsx) displaying name, amount, due day, paid status
-  - Added empty state message when no expenses exist for the selected month
-  - Integrated ExpenseList into dashboard page, passing fetched expenses
-  - Amount displayed with proper $ formatting and 2 decimal places
-  - Paid status shows as color-coded badges (green for Paid, yellow for Pending)
-- Files changed:
-  - src/app/dashboard/actions.ts (created - server action for fetching expenses)
-  - src/components/ExpenseList.tsx (created - expense list component)
-  - src/app/dashboard/page.tsx (updated to use ExpenseList)
-  - prd.json (marked US-010 as passes: true)
-- **Learnings for future iterations:**
-  - Use "use server" directive for server actions in separate files
-  - Prisma Decimal type needs .toString() conversion for serialization to client
-  - Export types from actions.ts for use in UI components (MonthlyExpenseWithExpense)
-  - Pattern: Server action fetches data with auth check, returns serializable data to components
----
-
-## 2026-01-17 - US-011
-- What was implemented:
-  - Created AddExpenseModal component (src/components/AddExpenseModal.tsx) with form fields for name, amount, and due day
-  - Added client-side validation (name required, amount must be positive, due day 1-31)
-  - Created createExpense server action in src/app/dashboard/actions.ts
-  - Server action validates input and creates Expense + MonthlyExpense in a transaction
-  - Created ExpenseSection wrapper component to hold Add Expense button and modal state
-  - Modal closes and list refreshes via router.refresh() on success
-- Files changed:
-  - src/components/AddExpenseModal.tsx (created)
-  - src/components/ExpenseSection.tsx (created)
-  - src/app/dashboard/actions.ts (added createExpense action)
-  - src/app/dashboard/page.tsx (replaced ExpenseList with ExpenseSection)
-  - prd.json (marked US-011 as passes: true)
-- **Learnings for future iterations:**
-  - Use Prisma $transaction for creating related records atomically (Expense + MonthlyExpense)
-  - Pattern: Wrap server component lists with client component for modal state management
-  - Use router.refresh() from next/navigation to trigger server data refetch after mutations
-  - Return { success, error? } from server actions for consistent error handling in UI
----
-
-## 2026-01-17 - US-012
-- What was implemented:
-  - Added Edit button to each expense row in ExpenseList component
-  - Created EditExpenseModal component pre-filled with current expense values
-  - Created updateExpense server action to update both Expense and MonthlyExpense records
-  - Server action validates ownership before allowing updates (security check)
-  - ExpenseSection component now manages both add and edit modal states
-  - List refreshes via router.refresh() after successful edit
-- Files changed:
-  - src/app/dashboard/actions.ts (added updateExpense action, UpdateExpenseInput/Result types)
-  - src/components/EditExpenseModal.tsx (created)
-  - src/components/ExpenseList.tsx (added Actions column with Edit button, onEdit prop)
-  - src/components/ExpenseSection.tsx (integrated EditExpenseModal, added edit state management)
-  - prd.json (marked US-012 as passes: true)
-- **Learnings for future iterations:**
-  - Always verify ownership before updating user-owned records (security best practice)
-  - Reuse modal patterns from add functionality - EditExpenseModal mirrors AddExpenseModal structure
-  - Use useState with expense type (or null) to track which expense is being edited
----
-
-## 2026-01-17 - US-013
-- What was implemented:
-  - Created deleteExpense server action with ownership verification before deletion
-  - Added Delete button (red) next to Edit button in each expense row
-  - Created DeleteConfirmModal component with confirmation dialog
-  - ExpenseSection manages deletion state and calls deleteExpense on confirmation
-  - Cascade delete via Prisma ensures MonthlyExpense records are automatically removed
-  - List refreshes via router.refresh() after successful deletion
-- Files changed:
-  - src/app/dashboard/actions.ts (added deleteExpense action, DeleteExpenseInput/Result types)
-  - src/components/DeleteConfirmModal.tsx (created)
-  - src/components/ExpenseList.tsx (added Delete button, onDelete prop)
-  - src/components/ExpenseSection.tsx (integrated DeleteConfirmModal, added delete state management)
-  - prd.json (marked US-013 as passes: true)
-- **Learnings for future iterations:**
-  - Prisma onDelete: Cascade handles related record cleanup automatically - no need for manual transaction
-  - Confirmation modals should show the item name to prevent accidental deletions
-  - Pattern: Simple delete flow uses only expenseId since cascade handles related records
----
-
-## 2026-01-17 - US-014
-- What was implemented:
-  - Created togglePaid server action to update isPaid status on MonthlyExpense
-  - Server action validates ownership before updating (security check)
-  - Added checkbox to each expense row in ExpenseList component
-  - Checkbox toggles isPaid status via handleTogglePaid in ExpenseSection
-  - Visual indication: paid expenses show strikethrough on name and amount
-  - Visual indication: paid expenses have green background row and checkmark
-  - Disabled state on checkbox while toggling to prevent double-clicks
-  - Change persists after router.refresh() refetches server data
-- Files changed:
-  - src/app/dashboard/actions.ts (added togglePaid action, TogglePaidInput/Result types)
-  - src/components/ExpenseList.tsx (added checkbox, strikethrough styling, onTogglePaid/togglingId props)
-  - src/components/ExpenseSection.tsx (added handleTogglePaid, togglingId state, passed props to ExpenseList)
-  - prd.json (marked US-014 as passes: true)
-- **Learnings for future iterations:**
-  - Toggle actions only need monthlyExpenseId since isPaid is per-month (not on Expense table)
-  - Use conditional className with template literals for dynamic styling based on state
-  - Disable form elements while async operations are in progress to prevent double-submissions
----
-
-## 2026-01-17 - US-015
-- What was implemented:
-  - Created getPreviousMonthExpenses server action to fetch expenses from previous month
-  - Created cloneExpenses server action to create MonthlyExpense records for target month
-  - Clone action handles existing records by updating amount (uses expenseId_month unique constraint)
-  - Created CloneExpensesModal component with:
-    - Lists all expenses from previous month
-    - Shows expense name, due day, previous amount
-    - Editable amount input field for each expense
-    - Confirm and Cancel buttons
-  - Added "Clone from Previous Month" button to ExpenseSection next to "Add Expense"
-  - Empty state message when no expenses exist in previous month
-- Files changed:
-  - src/app/dashboard/actions.ts (added getPreviousMonthExpenses, cloneExpenses actions, PreviousMonthExpense, CloneExpenseItem, CloneExpensesInput/Result types)
-  - src/components/CloneExpensesModal.tsx (created)
-  - src/components/ExpenseSection.tsx (added Clone button, CloneExpensesModal integration, isCloneModalOpen state)
-  - prd.json (marked US-015 as passes: true)
-- **Learnings for future iterations:**
-  - Use Prisma compound unique constraint (expenseId_month) for upsert-like logic in cloning
-  - Date math for previous month: new Date(year, month - 2, 1) where month is 1-indexed from URL param
-  - useEffect with async function inside for fetching data on modal open
-  - Track amounts separately from expenses using Record<string, string> for controlled inputs
----
-
-## 2026-01-17 - US-016
-- What was implemented:
-  - Created ExpenseTotals component displaying paid, unpaid, and grand totals
-  - Added useMemo hook to calculate totals from expenses array in ExpenseSection
-  - Totals formatted as currency using Intl.NumberFormat (e.g., $1,234.56)
-  - Color-coded totals: green for paid, yellow for unpaid, gray for grand total
-  - Totals automatically update when expenses are added, edited, deleted, or marked as paid (via router.refresh)
-- Files changed:
-  - src/components/ExpenseTotals.tsx (created)
-  - src/components/ExpenseSection.tsx (added totals calculation and ExpenseTotals component)
-  - prd.json (marked US-016 as passes: true)
-- **Learnings for future iterations:**
-  - Use useMemo for derived calculations from props to avoid recalculation on every render
-  - Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }) for proper currency formatting
-  - parseFloat() needed to convert Prisma Decimal string amounts back to numbers for math
-  - Totals update automatically since ExpenseSection receives fresh expenses prop after router.refresh()
----
-
-## 2026-01-17 - US-017
-- What was implemented:
-  - Made Header component mobile-friendly with hamburger menu that toggles dropdown navigation
-  - Converted ExpenseList from table-only to dual layout: card view for mobile (<640px), table for desktop
-  - Updated all modals (AddExpense, EditExpense, DeleteConfirm, CloneExpenses) to use bottom sheet pattern on mobile
-  - Ensured all buttons and touch targets are at least 44px for accessibility compliance
-  - Added responsive padding, typography, and spacing throughout the app
-  - Made input fields larger on mobile (py-3 + text-base) to prevent iOS zoom on focus
-  - Updated home, login, and register pages for mobile viewports
-- Files changed:
-  - src/components/Header.tsx (hamburger menu, mobile dropdown)
-  - src/components/ExpenseList.tsx (card layout for mobile + table for desktop)
-  - src/components/ExpenseSection.tsx (responsive button layout)
-  - src/components/ExpenseTotals.tsx (responsive spacing and typography)
-  - src/components/MonthNavigation.tsx (touch target sizes)
-  - src/components/AddExpenseModal.tsx (bottom sheet mobile pattern)
-  - src/components/EditExpenseModal.tsx (bottom sheet mobile pattern)
-  - src/components/DeleteConfirmModal.tsx (bottom sheet mobile pattern)
-  - src/components/CloneExpensesModal.tsx (bottom sheet + card layout for mobile)
-  - src/app/dashboard/page.tsx (responsive padding)
-  - src/app/page.tsx (responsive padding and typography)
-  - src/app/login/page.tsx (responsive form)
-  - src/app/register/page.tsx (responsive form)
-  - prd.json (marked US-017 as passes: true)
-- **Learnings for future iterations:**
-  - Use `sm:` Tailwind breakpoint (640px) for mobile-first responsive design
-  - Bottom sheet pattern for mobile modals: `items-end sm:items-center` + `rounded-t-xl sm:rounded-lg`
-  - Card layout is more readable than tables on small screens
-  - iOS requires text-base (16px) minimum font size to prevent auto-zoom on input focus
-  - Always use min-h-[44px] and min-w-[44px] for touch targets (Apple HIG recommendation)
-  - For buttons in modals, use `flex-col-reverse sm:flex-row` to put primary action at top on mobile
----
-
-## 2026-01-17 - US-018
-- What was implemented:
-  - Added Login and Register buttons to the home page (/)
-  - Login button styled with blue background (primary action) navigates to /login
-  - Register button styled with white background and gray border (secondary action) navigates to /register
-  - Buttons are responsive: stacked vertically on mobile, side-by-side on desktop
-  - Touch targets meet accessibility requirements (min-h-[44px])
-  - Used Next.js Link component for client-side navigation
-- Files changed:
-  - src/app/page.tsx (added Link import and buttons)
-  - prd.json (marked US-018 as passes: true)
-- **Learnings for future iterations:**
-  - Use Link from next/link for navigation in server components (no "use client" needed)
-  - Primary/secondary button pattern: primary uses solid bg color, secondary uses white bg with border
-  - flex-1 on both buttons in a flex container makes them equal width
----
-
-## 2026-01-17 - US-019
-- What was implemented:
-  - Applied Quiet Minimalism design system across entire application
-  - Layout: Single column, centered content with max-width 640px, generous vertical whitespace
-  - Typography: System fonts, limited hierarchy (one heading size, body, muted captions), lowercase text throughout
-  - Colors: Near-white background (#fafafa), dark gray text (#171717), muted grays (#737373, #a3a3a3), black accent for buttons
-  - Interactions: Subtle hover states (color shifts only, no animations), underlined links with offset
-  - Content: Simple scannable rows for expenses, minimal visual clutter, removed shadows and rounded corners
-  - Removed all decorative elements: shadows, excessive borders, color badges, card backgrounds
-- Files changed:
-  - src/app/globals.css (added CSS variables and base styles for design system)
-  - src/app/layout.tsx (updated body background and text colors)
-  - src/app/page.tsx (minimal home page with lowercase text)
-  - src/app/login/page.tsx (clean login form)
-  - src/app/register/page.tsx (clean register form)
-  - src/app/dashboard/page.tsx (centered layout, lowercase month display)
-  - src/components/Header.tsx (minimal header with text-only navigation)
-  - src/components/MonthNavigation.tsx (subtle navigation arrows)
-  - src/components/ExpenseSection.tsx (simplified button styles)
-  - src/components/ExpenseList.tsx (scannable row layout, checkbox with strikethrough)
-  - src/components/ExpenseTotals.tsx (minimal grid layout)
-  - src/components/AddExpenseModal.tsx (clean modal with flat inputs)
-  - src/components/EditExpenseModal.tsx (clean modal with flat inputs)
-  - src/components/DeleteConfirmModal.tsx (minimal confirmation dialog)
-  - src/components/CloneExpensesModal.tsx (simplified clone interface)
-  - prd.json (marked US-019 as passes: true)
-- **Learnings for future iterations:**
-  - Quiet Minimalism uses specific color palette: #fafafa (bg), #171717 (text), #737373 (secondary), #a3a3a3 (muted), #e5e5e5 (borders)
-  - Lowercase text creates an approachable, calm tone - use throughout headings and buttons
-  - Remove shadows, rounded corners, and color-coded elements for visual restraint
-  - Buttons: primary uses black bg (#171717), secondary uses border-only with muted text
-  - Inputs: flat design with border-only, focus state changes border to dark
-  - Content should breathe: use generous spacing (space-y-6, space-y-8) and single column layout
-  - max-w-[640px] is optimal for single-column reading comfort
+  - Re-use the same modal pattern for nested entities (accounts under institutions)
+  - Pass institutionId and institutionName to AddAccountModal for context
+  - Include nested entity data in parent query to avoid additional requests
+  - Keep separate action files for clarity (account-actions.ts vs actions.ts)
 ---

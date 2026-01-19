@@ -1,17 +1,17 @@
 {
-  "project": "Monthly Expense Tracker",
-  "branchName": "ralph/monthly-expense-tracker",
-  "description": "A web app to manage recurring monthly expenses with cloning from previous months",
+  "project": "Monthly Expense Tracker - Comprehensive Edition",
+  "branchName": "ralph/expense-tracker-v2",
+  "description": "A web application for users with complex financial situations involving multiple banks, credit cards, currencies, and income sources. Helps track monthly recurring expenses, understand cash flow across accounts, and plan payments.",
   "userStories": [
     {
-      "id": "US-001",
-      "title": "Initialize Next.js project with Tailwind CSS",
-      "description": "As a developer, I need a Next.js 14+ project with App Router and Tailwind CSS configured.",
+      "id": "US-020",
+      "title": "Create Institution Management",
+      "description": "As a user, I want to add and manage my financial institutions (banks, fintech apps, crypto exchanges) so I can organize my credit cards and accounts by institution.",
       "acceptanceCriteria": [
-        "Next.js 14+ project initialized with App Router",
-        "Tailwind CSS installed and configured",
-        "Basic app/layout.tsx and app/page.tsx exist",
-        "Dev server runs without errors",
+        "Can add institution with name and type (Bank, Fintech, Crypto Exchange, Payment Platform)",
+        "Can edit institution name and type",
+        "Can delete institution (with confirmation, cascades to accounts and cards)",
+        "Institutions page shows all institutions grouped by type",
         "Typecheck passes"
       ],
       "priority": 1,
@@ -19,14 +19,14 @@
       "notes": ""
     },
     {
-      "id": "US-002",
-      "title": "Set up PostgreSQL with Prisma ORM",
-      "description": "As a developer, I need database connection configured so we can persist data.",
+      "id": "US-021",
+      "title": "Create Account Management",
+      "description": "As a user, I want to add accounts within my institutions so I can track which account pays which expenses.",
       "acceptanceCriteria": [
-        "Prisma installed and initialized",
-        "DATABASE_URL configured in .env",
-        "prisma/schema.prisma has User model placeholder",
-        "npx prisma generate runs successfully",
+        "Can add account to an institution with name and currency (ARS/USD)",
+        "Can edit account details",
+        "Can delete account",
+        "Accounts shown under their institution on the institutions page",
         "Typecheck passes"
       ],
       "priority": 2,
@@ -34,286 +34,129 @@
       "notes": ""
     },
     {
-      "id": "US-003",
-      "title": "Add authentication with NextAuth.js",
-      "description": "As a developer, I need authentication set up so users can register and log in.",
+      "id": "US-022",
+      "title": "Create Credit Card Management",
+      "description": "As a user, I want to add and manage my credit cards so I can track my credit card payments and link expenses to cards.",
       "acceptanceCriteria": [
-        "NextAuth.js installed and configured",
-        "User model in Prisma schema with email, password fields",
-        "Credentials provider configured for email/password login",
-        "Migration run successfully",
+        "Dedicated /credit-cards page",
+        "Can add credit card with: institution, name, brand (VISA/MC/AMEX/Other), last 4 digits (optional), due day",
+        "Can edit credit card details",
+        "Can delete credit card",
+        "Cards grouped by institution on the page",
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
-      "id": "US-004",
-      "title": "Create login page",
-      "description": "As a user, I want to log in with email and password.",
+      "id": "US-023",
+      "title": "Add Multi-Currency Support to Expenses",
+      "description": "As a user, I want to track expenses in both ARS and USD so I can accurately track my USD rent and other foreign currency expenses.",
       "acceptanceCriteria": [
-        "Login page at /login with email and password fields",
-        "Submit button calls NextAuth signIn",
-        "Error message shown for invalid credentials",
-        "Redirect to dashboard on success",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
+        "Expense form includes currency selector (ARS/USD)",
+        "USD expenses show approximate ARS equivalent on dashboard",
+        "Monthly totals show separate ARS and USD amounts",
+        "Existing expenses default to ARS",
+        "Typecheck passes"
       ],
       "priority": 4,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
-      "id": "US-005",
-      "title": "Create registration page",
-      "description": "As a user, I want to create an account with email and password.",
+      "id": "US-024",
+      "title": "Add Expense Categories",
+      "description": "As a user, I want to categorize my expenses so I can see my expenses organized by type on the dashboard.",
       "acceptanceCriteria": [
-        "Registration page at /register with email and password fields",
-        "Password confirmation field",
-        "Validation errors shown for invalid input",
-        "Creates user in database on submit",
-        "Redirect to login after successful registration",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
+        "Expense form includes category dropdown with fixed options",
+        "Categories: Credit Card, Service, Rent, Insurance, Tax, Subscription, Building Fee, Other",
+        "Dashboard groups expenses by category",
+        "Category subtotals shown per category",
+        "Empty categories hidden",
+        "Existing expenses default to Other category",
+        "Typecheck passes"
       ],
       "priority": 5,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
-      "id": "US-006",
-      "title": "Protect routes and add logout",
-      "description": "As a user, I want protected routes to redirect to login, and I want to log out.",
+      "id": "US-025",
+      "title": "Add Payment Method to Expenses (Progressive Disclosure)",
+      "description": "As a user, I want to optionally specify how I pay each expense so I can track which account or card pays what.",
       "acceptanceCriteria": [
-        "Dashboard route (/dashboard) requires authentication",
-        "Unauthenticated users redirected to /login",
-        "Header shows logged-in user email",
-        "Logout button in header calls signOut",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
+        "Expense form has collapsible 'More options' section",
+        "More options includes: payment method, payment source account, paid with card",
+        "Payment methods: Bank Transfer, Direct Debit, Cash, Crypto Exchange, Credit Card",
+        "If 'Credit Card' selected, show card selector",
+        "If other methods, show account selector (optional)",
+        "All payment fields are optional",
+        "Typecheck passes"
       ],
       "priority": 6,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
-      "id": "US-007",
-      "title": "Create expenses database schema",
-      "description": "As a developer, I need to store expenses and monthly expense entries in the database.",
+      "id": "US-026",
+      "title": "Create Credit Card Payment Expense Type",
+      "description": "As a user, I want to easily add my monthly credit card payments so I can track when each card is due.",
       "acceptanceCriteria": [
-        "Expense model: id, userId, name (String), amount (Decimal), dueDay (Int 1-31), createdAt, updatedAt",
-        "MonthlyExpense model: id, expenseId, userId, month (String YYYY-MM), amount (Decimal), isPaid (Boolean default false)",
-        "Relations: Expense hasMany MonthlyExpense, User hasMany Expense",
-        "Migration runs successfully",
+        "When category is 'Credit Card', show card selector",
+        "Selected card links the expense to that credit card",
+        "Due day auto-fills from card's due day",
+        "Name auto-fills with card name (editable)",
         "Typecheck passes"
       ],
       "priority": 7,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
-      "id": "US-008",
-      "title": "Create dashboard page with month header",
-      "description": "As a user, I want to see the dashboard with the current month displayed.",
+      "id": "US-027",
+      "title": "Enhanced Clone Behavior for Credit Cards",
+      "description": "As a user, I want credit card expenses to clone with $0 when I clone from previous month so I'm forced to enter the actual statement amount.",
       "acceptanceCriteria": [
-        "Dashboard page at /dashboard",
-        "Header shows current month and year (e.g., 'January 2026')",
-        "Month stored in URL query param (?month=2026-01)",
-        "Defaults to current month if no param",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
+        "When cloning, expenses with category 'Credit Card' have amount set to 0",
+        "Other expense types clone with their previous amount",
+        "User can still edit all amounts before confirming clone",
+        "Typecheck passes"
       ],
       "priority": 8,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
-      "id": "US-009",
-      "title": "Add month navigation buttons",
-      "description": "As a user, I want to navigate to previous and next months.",
+      "id": "US-028",
+      "title": "User Settings Page",
+      "description": "As a user, I want to configure my exchange rate so USD expenses show accurate ARS equivalents.",
       "acceptanceCriteria": [
-        "Previous and Next buttons flanking the month header",
-        "Clicking Previous updates URL to previous month",
-        "Clicking Next updates URL to next month",
-        "Month header updates to reflect selected month",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
+        "Settings page accessible from header menu",
+        "Can set USD to ARS exchange rate",
+        "Rate used to calculate ARS equivalent for USD expenses",
+        "Default rate is 1200 (configurable)",
+        "Typecheck passes"
       ],
       "priority": 9,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
-      "id": "US-010",
-      "title": "Display expenses list for current month",
-      "description": "As a user, I want to see all expenses for the selected month.",
+      "id": "US-029",
+      "title": "Database Migration for New Schema",
+      "description": "As a developer, I want to migrate the database to support new models so the app can handle institutions, accounts, cards, and enhanced expenses.",
       "acceptanceCriteria": [
-        "Fetch MonthlyExpense records for selected month and current user",
-        "Display list showing: name, amount, due day, paid status",
-        "Expenses sorted by due day ascending",
-        "Empty state message when no expenses exist",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
+        "New Prisma schema with all new models: Institution, Account, CreditCard, ExpenseTag, UserSettings",
+        "Add new fields to Expense: category, currency, paymentMethod, paymentSourceId, paidWithCardId, linkedCreditCardId, isActive",
+        "Migration runs successfully",
+        "Existing users' expenses preserved",
+        "Existing expenses get default values (category=OTHER, currency=ARS)",
+        "Typecheck passes"
       ],
-      "priority": 10,
+      "priority": 0,
       "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-011",
-      "title": "Add new expense form",
-      "description": "As a user, I want to add a new expense to the current month.",
-      "acceptanceCriteria": [
-        "'Add Expense' button opens modal with form",
-        "Form fields: name (required), amount (required, numeric), due day (required, 1-31)",
-        "Validation errors shown for invalid input",
-        "On submit: creates Expense and MonthlyExpense for current month",
-        "Modal closes and list refreshes on success",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 11,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-012",
-      "title": "Edit expense functionality",
-      "description": "As a user, I want to edit an existing expense.",
-      "acceptanceCriteria": [
-        "Edit button on each expense row",
-        "Opens modal pre-filled with current values",
-        "Can update name, amount, and due day",
-        "Saves changes to both Expense and MonthlyExpense",
-        "List updates after save",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 12,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-013",
-      "title": "Delete expense functionality",
-      "description": "As a user, I want to delete an expense.",
-      "acceptanceCriteria": [
-        "Delete button on each expense row",
-        "Confirmation dialog: 'Are you sure you want to delete this expense?'",
-        "On confirm: deletes Expense and all related MonthlyExpense records",
-        "Expense removed from list",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 13,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-014",
-      "title": "Mark expense as paid toggle",
-      "description": "As a user, I want to mark an expense as paid for the current month.",
-      "acceptanceCriteria": [
-        "Checkbox or toggle on each expense row",
-        "Clicking updates isPaid on MonthlyExpense",
-        "Visual indication: paid expenses show checkmark or strikethrough",
-        "Change persists on page reload",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 14,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-015",
-      "title": "Clone expenses from previous month",
-      "description": "As a user, I want to clone expenses from the previous month with editable amounts.",
-      "acceptanceCriteria": [
-        "'Clone from Previous Month' button visible on dashboard",
-        "Opens confirmation screen listing all expenses from previous month",
-        "Each row shows: name, previous amount, editable amount input field",
-        "User can modify amounts before confirming",
-        "'Confirm' button creates MonthlyExpense entries for current month",
-        "'Cancel' button closes without changes",
-        "List refreshes after cloning",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 15,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-016",
-      "title": "Display monthly expense totals",
-      "description": "As a user, I want to see the total amount for paid expenses, unpaid expenses, and the combined total for the current month.",
-      "acceptanceCriteria": [
-        "Dashboard shows total for paid expenses (sum of all isPaid=true)",
-        "Dashboard shows total for unpaid expenses (sum of all isPaid=false)",
-        "Dashboard shows combined grand total (paid + unpaid)",
-        "Totals update when expenses are added, edited, deleted, or marked as paid",
-        "Totals formatted as currency (e.g., $1,234.56)",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 16,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-017",
-      "title": "Fully responsive mobile experience",
-      "description": "As a user, I want the app to be fully responsive so I can use it comfortably on mobile devices.",
-      "acceptanceCriteria": [
-        "All pages adapt to mobile screen sizes (320px and up)",
-        "Navigation is mobile-friendly (hamburger menu or similar)",
-        "Expense list is readable and usable on small screens",
-        "Forms and modals work well on touch devices",
-        "Buttons and touch targets are at least 44px for accessibility",
-        "No horizontal scrolling on mobile viewports",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill at mobile viewport"
-      ],
-      "priority": 17,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-018",
-      "title": "Add Login/Register buttons on home page",
-      "description": "As a user, I want to see Login and Register buttons on the home page so I can easily access authentication.",
-      "acceptanceCriteria": [
-        "Home page (/) displays a Login button",
-        "Home page (/) displays a Register button",
-        "Login button navigates to /login",
-        "Register button navigates to /register",
-        "Buttons are clearly visible and styled consistently",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 18,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-019",
-      "title": "Apply Quiet Minimalism design system",
-      "description": "As a user, I want a calm, minimal interface that prioritizes clarity and lets content breathe.",
-      "acceptanceCriteria": [
-        "Layout: Single column, centered content (max-width ~640px), generous vertical whitespace",
-        "Typography: System fonts or clean sans-serif (Geist, Inter), limited hierarchy (one heading size, body, muted captions), lowercase text for approachable tone",
-        "Colors: Near-white background (#fafafa), dark gray text (#171717), muted grays for secondary (#737373, #a3a3a3), single accent color used sparingly",
-        "Interactions: Subtle hover states (color shifts, no animations), underlined links with offset, minimal motion",
-        "Content: Information as simple scannable rows, minimal footers, no visual clutter",
-        "Remove all unnecessary decorative elements",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 19,
-      "passes": true,
-      "notes": "Philosophy: Let content breathe. Remove everything that doesn't earn its place. Character through restraint, not decoration."
+      "notes": "This should run first before other stories since it sets up the schema"
     }
   ]
 }
