@@ -81,3 +81,27 @@ Started: Sun Jan 18 22:23:15 -03 2026
   - Include nested entity data in parent query to avoid additional requests
   - Keep separate action files for clarity (account-actions.ts vs actions.ts)
 ---
+
+## 2026-01-18 23:10 - US-022
+- What was implemented:
+  - Created dedicated /credit-cards page with full CRUD functionality
+  - Credit cards grouped by institution on the page
+  - Can add credit card with: institution, name, brand (VISA/MC/AMEX/Other), last 4 digits (optional), due day
+  - Can edit credit card details (including changing institution)
+  - Can delete credit card with confirmation dialog
+  - Added "cards" navigation link to Header
+- Files changed:
+  - src/app/credit-cards/page.tsx (new - server component page)
+  - src/app/credit-cards/actions.ts (new - server actions for CRUD + getInstitutionsForSelect)
+  - src/components/CreditCardSection.tsx (new - container with modal state)
+  - src/components/CreditCardList.tsx (new - list grouped by institution)
+  - src/components/AddCreditCardModal.tsx (new - add form with institution/brand/dueDay)
+  - src/components/EditCreditCardModal.tsx (new - edit form modal)
+  - src/components/DeleteCreditCardModal.tsx (new - delete confirmation)
+  - src/components/Header.tsx (updated - added "cards" link)
+- **Learnings for future iterations:**
+  - Create a getInstitutionsForSelect() helper to fetch institutions for dropdowns
+  - Disable "add" button when no institutions exist (must create institutions first)
+  - Input masking for lastFourDigits: use onChange with regex replace to allow only digits
+  - Cards are simpler than institutions (no nested entities), so no cascade warnings needed
+---
