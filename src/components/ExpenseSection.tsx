@@ -8,13 +8,21 @@ import AddExpenseModal from "./AddExpenseModal";
 import EditExpenseModal from "./EditExpenseModal";
 import DeleteConfirmModal from "./DeleteConfirmModal";
 import CloneExpensesModal from "./CloneExpensesModal";
-import { MonthlyExpenseWithExpense, deleteExpense, togglePaid } from "@/app/dashboard/actions";
+import {
+  MonthlyExpenseWithExpense,
+  deleteExpense,
+  togglePaid,
+  AccountOption,
+  CreditCardOption,
+} from "@/app/dashboard/actions";
 
 interface ExpenseSectionProps {
   expenses: MonthlyExpenseWithExpense[];
   currentMonth: string;
   displayMonth: string;
   exchangeRate: number;
+  accounts: AccountOption[];
+  creditCards: CreditCardOption[];
 }
 
 export default function ExpenseSection({
@@ -22,6 +30,8 @@ export default function ExpenseSection({
   currentMonth,
   displayMonth,
   exchangeRate,
+  accounts,
+  creditCards,
 }: ExpenseSectionProps) {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isCloneModalOpen, setIsCloneModalOpen] = useState(false);
@@ -141,6 +151,8 @@ export default function ExpenseSection({
       {isAddModalOpen && (
         <AddExpenseModal
           currentMonth={currentMonth}
+          accounts={accounts}
+          creditCards={creditCards}
           onClose={() => setIsAddModalOpen(false)}
           onSuccess={handleAddSuccess}
         />
@@ -149,6 +161,8 @@ export default function ExpenseSection({
       {editingExpense && (
         <EditExpenseModal
           expense={editingExpense}
+          accounts={accounts}
+          creditCards={creditCards}
           onClose={() => setEditingExpense(null)}
           onSuccess={handleEditSuccess}
         />

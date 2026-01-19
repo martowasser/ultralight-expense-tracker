@@ -1,7 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { updateExpense, MonthlyExpenseWithExpense, Currency, ExpenseCategory } from "@/app/dashboard/actions";
+import {
+  updateExpense,
+  MonthlyExpenseWithExpense,
+  Currency,
+  ExpenseCategory,
+  PaymentMethod,
+  AccountOption,
+  CreditCardOption,
+} from "@/app/dashboard/actions";
 
 const CATEGORY_OPTIONS: { value: ExpenseCategory; label: string }[] = [
   { value: "CREDIT_CARD", label: "credit card" },
@@ -14,14 +22,26 @@ const CATEGORY_OPTIONS: { value: ExpenseCategory; label: string }[] = [
   { value: "OTHER", label: "other" },
 ];
 
+const PAYMENT_METHOD_OPTIONS: { value: PaymentMethod; label: string }[] = [
+  { value: "BANK_TRANSFER", label: "bank transfer" },
+  { value: "DIRECT_DEBIT", label: "direct debit" },
+  { value: "CASH", label: "cash" },
+  { value: "CRYPTO_EXCHANGE", label: "crypto exchange" },
+  { value: "CREDIT_CARD", label: "credit card" },
+];
+
 interface EditExpenseModalProps {
   expense: MonthlyExpenseWithExpense;
+  accounts: AccountOption[];
+  creditCards: CreditCardOption[];
   onClose: () => void;
   onSuccess: () => void;
 }
 
 export default function EditExpenseModal({
   expense,
+  accounts,
+  creditCards,
   onClose,
   onSuccess,
 }: EditExpenseModalProps) {
@@ -30,6 +50,22 @@ export default function EditExpenseModal({
   const [dueDay, setDueDay] = useState(expense.expense.dueDay.toString());
   const [currency, setCurrency] = useState<Currency>(expense.expense.currency);
   const [category, setCategory] = useState<ExpenseCategory>(expense.expense.category);
+
+  // More options state - initialize from expense data
+  const hasPaymentInfo = expense.expense.paymentMethod !== null ||
+    expense.expense.paymentSourceId !== null ||
+    expense.expense.paidWithCardId !== null;
+  const [showMoreOptions, setShowMoreOptions] = useState(hasPaymentInfo);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | "">(
+    expense.expense.paymentMethod || ""
+  );
+  const [paymentSourceId, setPaymentSourceId] = useState(
+    expense.expense.paymentSourceId || ""
+  );
+  const [paidWithCardId, setPaidWithCardId] = useState(
+    expense.expense.paidWithCardId || ""
+  );
+
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -66,6 +102,9 @@ export default function EditExpenseModal({
         dueDay: dueDayNum,
         currency,
         category,
+        paymentMethod: paymentMethod || null,
+        paymentSourceId: paymentSourceId || null,
+        paidWithCardId: paidWithCardId || null,
       });
 
       if (result.error) {
@@ -78,6 +117,18 @@ export default function EditExpenseModal({
     } catch {
       setError("failed to update expense");
       setIsSubmitting(false);
+    }
+  };
+
+  // Clear card/account when payment method changes
+  const handlePaymentMethodChange = (value: PaymentMethod | "") => {
+    setPaymentMethod(value);
+    // Clear selections when method changes
+    if (value !== "CREDIT_CARD") {
+      setPaidWithCardId("");
+    }
+    if (value === "CREDIT_CARD" || value === "") {
+      setPaymentSourceId("");
     }
   };
 
@@ -171,6 +222,90 @@ export default function EditExpenseModal({
                 </option>
               ))}
             </select>
+          </div>
+
+          {/* More Options Collapsible Section */}
+          <div className="border-t border-[#e5e5e5] pt-4">
+            <button
+              type="button"
+              onClick={() => setShowMoreOptions(!showMoreOptions)}
+              className="flex items-center gap-2 text-sm text-[#737373] hover:text-[#171717]"
+              disabled={isSubmitting}
+            >
+              <span className="text-xs">{showMoreOptions ? "▼" : "▶"}</span>
+              more options
+            </button>
+
+            {showMoreOptions && (
+              <div className="mt-4 space-y-4">
+                <div className="space-y-1">
+                  <label htmlFor="paymentMethod" className="block text-sm text-[#737373]">
+                    payment method
+                  </label>
+                  <select
+                    id="paymentMethod"
+                    value={paymentMethod}
+                    onChange={(e) => handlePaymentMethodChange(e.target.value as PaymentMethod | "")}
+                    className="w-full px-3 py-3 text-base text-[#171717] bg-white border border-[#e5e5e5] focus:border-[#171717] focus:outline-none"
+                    disabled={isSubmitting}
+                  >
+                    <option value="">not specified</option>
+                    {PAYMENT_METHOD_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Show credit card selector when payment method is Credit Card */}
+                {paymentMethod === "CREDIT_CARD" && (
+                  <div className="space-y-1">
+                    <label htmlFor="paidWithCardId" className="block text-sm text-[#737373]">
+                      paid with card
+                    </label>
+                    <select
+                      id="paidWithCardId"
+                      value={paidWithCardId}
+                      onChange={(e) => setPaidWithCardId(e.target.value)}
+                      className="w-full px-3 py-3 text-base text-[#171717] bg-white border border-[#e5e5e5] focus:border-[#171717] focus:outline-none"
+                      disabled={isSubmitting}
+                    >
+                      <option value="">not specified</option>
+                      {creditCards.map((card) => (
+                        <option key={card.id} value={card.id}>
+                          {card.institutionName} - {card.name}
+                          {card.lastFourDigits && ` (****${card.lastFourDigits})`}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Show account selector for other payment methods */}
+                {paymentMethod && paymentMethod !== "CREDIT_CARD" && (
+                  <div className="space-y-1">
+                    <label htmlFor="paymentSourceId" className="block text-sm text-[#737373]">
+                      payment source account
+                    </label>
+                    <select
+                      id="paymentSourceId"
+                      value={paymentSourceId}
+                      onChange={(e) => setPaymentSourceId(e.target.value)}
+                      className="w-full px-3 py-3 text-base text-[#171717] bg-white border border-[#e5e5e5] focus:border-[#171717] focus:outline-none"
+                      disabled={isSubmitting}
+                    >
+                      <option value="">not specified</option>
+                      {accounts.map((account) => (
+                        <option key={account.id} value={account.id}>
+                          {account.institutionName} - {account.name} ({account.currency})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-2">

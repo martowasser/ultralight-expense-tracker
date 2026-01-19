@@ -2,9 +2,9 @@
 
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { Currency, ExpenseCategory } from "@/generated/prisma/enums";
+import { Currency, ExpenseCategory, PaymentMethod } from "@/generated/prisma/enums";
 
-export type { Currency, ExpenseCategory };
+export type { Currency, ExpenseCategory, PaymentMethod };
 
 export interface MonthlyExpenseWithExpense {
   id: string;
@@ -18,6 +18,9 @@ export interface MonthlyExpenseWithExpense {
     dueDay: number;
     currency: Currency;
     category: ExpenseCategory;
+    paymentMethod: PaymentMethod | null;
+    paymentSourceId: string | null;
+    paidWithCardId: string | null;
   };
 }
 
@@ -28,6 +31,9 @@ export interface CreateExpenseInput {
   month: string;
   currency: Currency;
   category: ExpenseCategory;
+  paymentMethod?: PaymentMethod | null;
+  paymentSourceId?: string | null;
+  paidWithCardId?: string | null;
 }
 
 export interface CreateExpenseResult {
@@ -68,7 +74,32 @@ export async function createExpense(input: CreateExpenseInput): Promise<CreateEx
     return { success: false, error: "Invalid category" };
   }
 
+  const validPaymentMethods = ["BANK_TRANSFER", "DIRECT_DEBIT", "CASH", "CRYPTO_EXCHANGE", "CREDIT_CARD"];
+  if (input.paymentMethod && !validPaymentMethods.includes(input.paymentMethod)) {
+    return { success: false, error: "Invalid payment method" };
+  }
+
   try {
+    // Validate paymentSourceId if provided
+    if (input.paymentSourceId) {
+      const account = await prisma.account.findUnique({
+        where: { id: input.paymentSourceId },
+      });
+      if (!account || account.userId !== session.user.id) {
+        return { success: false, error: "Payment source account not found" };
+      }
+    }
+
+    // Validate paidWithCardId if provided
+    if (input.paidWithCardId) {
+      const card = await prisma.creditCard.findUnique({
+        where: { id: input.paidWithCardId },
+      });
+      if (!card || card.userId !== session.user.id) {
+        return { success: false, error: "Credit card not found" };
+      }
+    }
+
     // Create Expense and MonthlyExpense in a transaction
     await prisma.$transaction(async (tx) => {
       const expense = await tx.expense.create({
@@ -79,6 +110,9 @@ export async function createExpense(input: CreateExpenseInput): Promise<CreateEx
           dueDay: input.dueDay,
           currency: input.currency,
           category: input.category,
+          paymentMethod: input.paymentMethod || null,
+          paymentSourceId: input.paymentSourceId || null,
+          paidWithCardId: input.paidWithCardId || null,
         },
       });
 
@@ -108,6 +142,9 @@ export interface UpdateExpenseInput {
   dueDay: number;
   currency: Currency;
   category: ExpenseCategory;
+  paymentMethod?: PaymentMethod | null;
+  paymentSourceId?: string | null;
+  paidWithCardId?: string | null;
 }
 
 export interface UpdateExpenseResult {
@@ -144,6 +181,11 @@ export async function updateExpense(input: UpdateExpenseInput): Promise<UpdateEx
     return { success: false, error: "Invalid category" };
   }
 
+  const validPaymentMethods = ["BANK_TRANSFER", "DIRECT_DEBIT", "CASH", "CRYPTO_EXCHANGE", "CREDIT_CARD"];
+  if (input.paymentMethod && !validPaymentMethods.includes(input.paymentMethod)) {
+    return { success: false, error: "Invalid payment method" };
+  }
+
   try {
     // Verify ownership before updating
     const expense = await prisma.expense.findUnique({
@@ -162,6 +204,26 @@ export async function updateExpense(input: UpdateExpenseInput): Promise<UpdateEx
       return { success: false, error: "Monthly expense not found" };
     }
 
+    // Validate paymentSourceId if provided
+    if (input.paymentSourceId) {
+      const account = await prisma.account.findUnique({
+        where: { id: input.paymentSourceId },
+      });
+      if (!account || account.userId !== session.user.id) {
+        return { success: false, error: "Payment source account not found" };
+      }
+    }
+
+    // Validate paidWithCardId if provided
+    if (input.paidWithCardId) {
+      const card = await prisma.creditCard.findUnique({
+        where: { id: input.paidWithCardId },
+      });
+      if (!card || card.userId !== session.user.id) {
+        return { success: false, error: "Credit card not found" };
+      }
+    }
+
     // Update Expense and MonthlyExpense in a transaction
     await prisma.$transaction(async (tx) => {
       await tx.expense.update({
@@ -172,6 +234,9 @@ export async function updateExpense(input: UpdateExpenseInput): Promise<UpdateEx
           dueDay: input.dueDay,
           currency: input.currency,
           category: input.category,
+          paymentMethod: input.paymentMethod || null,
+          paymentSourceId: input.paymentSourceId || null,
+          paidWithCardId: input.paidWithCardId || null,
         },
       });
 
@@ -296,6 +361,9 @@ export async function getMonthlyExpenses(month: string): Promise<MonthlyExpenseW
           dueDay: true,
           currency: true,
           category: true,
+          paymentMethod: true,
+          paymentSourceId: true,
+          paidWithCardId: true,
         },
       },
     },
@@ -318,6 +386,9 @@ export async function getMonthlyExpenses(month: string): Promise<MonthlyExpenseW
       dueDay: e.expense.dueDay,
       currency: e.expense.currency,
       category: e.expense.category,
+      paymentMethod: e.expense.paymentMethod,
+      paymentSourceId: e.expense.paymentSourceId,
+      paidWithCardId: e.expense.paidWithCardId,
     },
   }));
 }
@@ -480,4 +551,78 @@ export async function getExchangeRate(): Promise<number> {
   });
 
   return settings?.usdToArsRate ? Number(settings.usdToArsRate) : 1200;
+}
+
+export interface AccountOption {
+  id: string;
+  name: string;
+  currency: Currency;
+  institutionName: string;
+}
+
+export async function getAccountsForSelect(): Promise<AccountOption[]> {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    return [];
+  }
+
+  const accounts = await prisma.account.findMany({
+    where: { userId: session.user.id },
+    include: {
+      institution: {
+        select: {
+          name: true,
+        },
+      },
+    },
+    orderBy: [
+      { institution: { name: "asc" } },
+      { name: "asc" },
+    ],
+  });
+
+  return accounts.map((account) => ({
+    id: account.id,
+    name: account.name,
+    currency: account.currency,
+    institutionName: account.institution.name,
+  }));
+}
+
+export interface CreditCardOption {
+  id: string;
+  name: string;
+  lastFourDigits: string | null;
+  institutionName: string;
+}
+
+export async function getCreditCardsForSelect(): Promise<CreditCardOption[]> {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    return [];
+  }
+
+  const cards = await prisma.creditCard.findMany({
+    where: { userId: session.user.id },
+    include: {
+      institution: {
+        select: {
+          name: true,
+        },
+      },
+    },
+    orderBy: [
+      { institution: { name: "asc" } },
+      { name: "asc" },
+    ],
+  });
+
+  return cards.map((card) => ({
+    id: card.id,
+    name: card.name,
+    lastFourDigits: card.lastFourDigits,
+    institutionName: card.institution.name,
+  }));
 }

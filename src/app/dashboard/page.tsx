@@ -3,7 +3,7 @@ import { auth } from "@/auth";
 import Header from "@/components/Header";
 import MonthNavigation from "@/components/MonthNavigation";
 import ExpenseSection from "@/components/ExpenseSection";
-import { getMonthlyExpenses, getExchangeRate } from "./actions";
+import { getMonthlyExpenses, getExchangeRate, getAccountsForSelect, getCreditCardsForSelect } from "./actions";
 
 function getCurrentMonth(): string {
   const now = new Date();
@@ -47,9 +47,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   }
 
   const displayMonth = formatMonthDisplay(selectedMonth);
-  const [expenses, exchangeRate] = await Promise.all([
+  const [expenses, exchangeRate, accounts, creditCards] = await Promise.all([
     getMonthlyExpenses(selectedMonth),
     getExchangeRate(),
+    getAccountsForSelect(),
+    getCreditCardsForSelect(),
   ]);
 
   return (
@@ -57,7 +59,14 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       <Header userEmail={session.user.email || ""} />
       <main className="max-w-[640px] mx-auto px-6 py-8 space-y-8">
         <MonthNavigation currentMonth={selectedMonth} displayMonth={displayMonth} />
-        <ExpenseSection expenses={expenses} currentMonth={selectedMonth} displayMonth={displayMonth} exchangeRate={exchangeRate} />
+        <ExpenseSection
+          expenses={expenses}
+          currentMonth={selectedMonth}
+          displayMonth={displayMonth}
+          exchangeRate={exchangeRate}
+          accounts={accounts}
+          creditCards={creditCards}
+        />
       </main>
     </div>
   );
