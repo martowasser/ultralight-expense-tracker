@@ -132,3 +132,23 @@ Started: Sun Jan 18 22:23:15 -03 2026
   - Exchange rate is stored in UserSettings.usdToArsRate with default 1200
   - When adding new fields to expense interfaces, update both MonthlyExpenseWithExpense and PreviousMonthExpense
 ---
+
+## 2026-01-18 - US-024
+- What was implemented:
+  - Added category support to expenses (Credit Card, Service, Rent, Insurance, Tax, Subscription, Building Fee, Other)
+  - Category dropdown added to Add and Edit expense modals (defaults to Other)
+  - ExpenseList now groups expenses by category with category headers
+  - Each category shows its own subtotal (supports multi-currency ARS + USD)
+  - Empty categories are automatically hidden
+  - Existing expenses default to OTHER category (via schema default)
+- Files changed:
+  - src/app/dashboard/actions.ts (updated - added category to types, exports ExpenseCategory)
+  - src/components/AddExpenseModal.tsx (updated - category selector with CATEGORY_OPTIONS)
+  - src/components/EditExpenseModal.tsx (updated - category selector with CATEGORY_OPTIONS)
+  - src/components/ExpenseList.tsx (updated - grouping by category, subtotals per category)
+- **Learnings for future iterations:**
+  - Use CATEGORY_ORDER array to control display order of categories
+  - Group expenses using reduce pattern, then filter and map with CATEGORY_ORDER for consistent ordering
+  - Subtotals per category need to handle multi-currency (ars + usd separately)
+  - Format subtotals with "+" between currencies when both exist
+---
