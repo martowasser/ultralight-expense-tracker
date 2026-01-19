@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
+import Link from "next/link";
 import { signOut } from "next-auth/react";
 
 interface HeaderProps {
@@ -9,17 +11,35 @@ interface HeaderProps {
 
 export default function Header({ userEmail }: HeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const pathname = usePathname();
 
   const handleSignOut = async () => {
     await signOut({ callbackUrl: "/login" });
   };
 
+  const navLinks = [
+    { href: "/dashboard", label: "expenses" },
+    { href: "/institutions", label: "institutions" },
+  ];
+
   return (
     <header className="border-b border-[#e5e5e5] px-6 py-4">
       <div className="max-w-[640px] mx-auto flex items-center justify-between">
-        <span className="text-sm text-[#171717] lowercase">
-          expenses
-        </span>
+        <nav className="flex items-center gap-4">
+          {navLinks.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={`text-sm lowercase min-h-[44px] flex items-center ${
+                pathname === link.href
+                  ? "text-[#171717]"
+                  : "text-[#a3a3a3] hover:text-[#171717]"
+              }`}
+            >
+              {link.label}
+            </Link>
+          ))}
+        </nav>
 
         {/* Desktop navigation */}
         <div className="hidden sm:flex items-center gap-6">
