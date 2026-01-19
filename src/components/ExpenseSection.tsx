@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import ExpenseList from "./ExpenseList";
-import ExpenseTotals from "./ExpenseTotals";
 import AddExpenseModal from "./AddExpenseModal";
 import EditExpenseModal from "./EditExpenseModal";
 import DeleteConfirmModal from "./DeleteConfirmModal";
@@ -20,7 +19,6 @@ interface ExpenseSectionProps {
   expenses: MonthlyExpenseWithExpense[];
   currentMonth: string;
   displayMonth: string;
-  exchangeRate: number;
   accounts: AccountOption[];
   creditCards: CreditCardOption[];
 }
@@ -29,7 +27,6 @@ export default function ExpenseSection({
   expenses,
   currentMonth,
   displayMonth,
-  exchangeRate,
   accounts,
   creditCards,
 }: ExpenseSectionProps) {
@@ -40,28 +37,6 @@ export default function ExpenseSection({
   const [isDeleting, setIsDeleting] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const router = useRouter();
-
-  // Calculate totals from expenses by currency
-  const totals = useMemo(() => {
-    return expenses.reduce(
-      (acc, expense) => {
-        const amount = parseFloat(expense.amount);
-        const currency = expense.expense.currency;
-        const currencyKey = currency === "USD" ? "usd" : "ars";
-
-        if (expense.isPaid) {
-          acc[currencyKey].paid += amount;
-        } else {
-          acc[currencyKey].unpaid += amount;
-        }
-        return acc;
-      },
-      {
-        ars: { paid: 0, unpaid: 0 },
-        usd: { paid: 0, unpaid: 0 },
-      }
-    );
-  }, [expenses]);
 
   const handleAddSuccess = () => {
     setIsAddModalOpen(false);
@@ -118,8 +93,6 @@ export default function ExpenseSection({
 
   return (
     <div className="space-y-6">
-      <ExpenseTotals totals={totals} exchangeRate={exchangeRate} />
-
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
         <span className="text-sm text-[#737373]">expenses</span>
         <div className="flex flex-col sm:flex-row gap-2">
@@ -141,7 +114,6 @@ export default function ExpenseSection({
       <ExpenseList
         expenses={expenses}
         displayMonth={displayMonth}
-        exchangeRate={exchangeRate}
         onEdit={handleEdit}
         onDelete={handleDelete}
         onTogglePaid={handleTogglePaid}

@@ -3,7 +3,7 @@ import { auth } from "@/auth";
 import Header from "@/components/Header";
 import MonthNavigation from "@/components/MonthNavigation";
 import ExpenseSection from "@/components/ExpenseSection";
-import { getMonthlyExpenses, getExchangeRate, getAccountsForSelect, getCreditCardsForSelect } from "./actions";
+import { getMonthlyExpenses, getAccountsForSelect, getCreditCardsForSelect } from "./actions";
 
 function getCurrentMonth(): string {
   const now = new Date();
@@ -47,9 +47,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   }
 
   const displayMonth = formatMonthDisplay(selectedMonth);
-  const [expenses, exchangeRate, accounts, creditCards] = await Promise.all([
+  const [expenses, accounts, creditCards] = await Promise.all([
     getMonthlyExpenses(selectedMonth),
-    getExchangeRate(),
     getAccountsForSelect(),
     getCreditCardsForSelect(),
   ]);
@@ -63,7 +62,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           expenses={expenses}
           currentMonth={selectedMonth}
           displayMonth={displayMonth}
-          exchangeRate={exchangeRate}
           accounts={accounts}
           creditCards={creditCards}
         />
