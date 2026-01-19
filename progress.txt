@@ -208,3 +208,21 @@ Started: Sun Jan 18 22:23:15 -03 2026
   - Clone modal validation requires all amounts > 0, which forces user to enter new credit card amounts
   - The previous month's amount is still displayed, so user knows what they paid last month
 ---
+
+## 2026-01-19 - US-028
+- What was implemented:
+  - Created /settings page accessible from header navigation
+  - Users can configure USD to ARS exchange rate
+  - Rate saved in UserSettings table using upsert (create or update)
+  - Default rate is 1200 if no settings exist
+  - Rate is already used by getExchangeRate() for USD expense ARS equivalents (from US-023)
+- Files changed:
+  - src/app/settings/page.tsx (new - server component page)
+  - src/app/settings/actions.ts (new - server actions for getUserSettings and updateSettings)
+  - src/components/SettingsSection.tsx (new - client component with form for exchange rate)
+  - src/components/Header.tsx (updated - added "settings" link to navigation)
+- **Learnings for future iterations:**
+  - Use prisma.upsert() for settings that should create or update based on userId
+  - Simple settings pages don't need modals - inline form with save button works well
+  - Add success message feedback after saving (useState for success state)
+---
