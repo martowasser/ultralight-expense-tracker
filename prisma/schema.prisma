@@ -13,6 +13,45 @@ datasource db {
   provider = "postgresql"
 }
 
+// Enums
+enum InstitutionType {
+  BANK
+  FINTECH
+  CRYPTO_EXCHANGE
+  PAYMENT_PLATFORM
+}
+
+enum Currency {
+  ARS
+  USD
+}
+
+enum ExpenseCategory {
+  CREDIT_CARD
+  SERVICE
+  RENT
+  INSURANCE
+  TAX
+  SUBSCRIPTION
+  BUILDING_FEE
+  OTHER
+}
+
+enum PaymentMethod {
+  BANK_TRANSFER
+  DIRECT_DEBIT
+  CASH
+  CRYPTO_EXCHANGE
+  CREDIT_CARD
+}
+
+enum CardBrand {
+  VISA
+  MASTERCARD
+  AMEX
+  OTHER
+}
+
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -22,21 +61,112 @@ model User {
 
   expenses        Expense[]
   monthlyExpenses MonthlyExpense[]
+  institutions    Institution[]
+  accounts        Account[]
+  creditCards     CreditCard[]
+  settings        UserSettings?
+}
+
+model Institution {
+  id        String          @id @default(cuid())
+  userId    String
+  name      String
+  type      InstitutionType
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accounts    Account[]
+  creditCards CreditCard[]
+
+  @@index([userId])
+}
+
+model Account {
+  id            String   @id @default(cuid())
+  userId        String
+  institutionId String
+  name          String
+  currency      Currency @default(ARS)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user                   User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  institution            Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  expensesAsPaymentSource Expense[]  @relation("PaymentSourceAccount")
+
+  @@index([userId])
+  @@index([institutionId])
+}
+
+model CreditCard {
+  id            String    @id @default(cuid())
+  userId        String
+  institutionId String
+  name          String
+  brand         CardBrand @default(OTHER)
+  lastFourDigits String?
+  dueDay        Int
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  user                   User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  institution            Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  expensesPaidWithCard   Expense[]   @relation("PaidWithCard")
+  expensesLinkedToCard   Expense[]   @relation("LinkedCreditCard")
+
+  @@index([userId])
+  @@index([institutionId])
+}
+
+model UserSettings {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  usdToArsRate    Decimal  @default(1200)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Expense {
-  id        String   @id @default(cuid())
-  userId    String
-  name      String
-  amount    Decimal
-  dueDay    Int
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                 String          @id @default(cuid())
+  userId             String
+  name               String
+  amount             Decimal
+  dueDay             Int
+  category           ExpenseCategory @default(OTHER)
+  currency           Currency        @default(ARS)
+  paymentMethod      PaymentMethod?
+  paymentSourceId    String?
+  paidWithCardId     String?
+  linkedCreditCardId String?
+  isActive           Boolean         @default(true)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
 
-  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  monthlyExpenses MonthlyExpense[]
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  paymentSource     Account?         @relation("PaymentSourceAccount", fields: [paymentSourceId], references: [id], onDelete: SetNull)
+  paidWithCard      CreditCard?      @relation("PaidWithCard", fields: [paidWithCardId], references: [id], onDelete: SetNull)
+  linkedCreditCard  CreditCard?      @relation("LinkedCreditCard", fields: [linkedCreditCardId], references: [id], onDelete: SetNull)
+  monthlyExpenses   MonthlyExpense[]
+  tags              ExpenseTag[]
 
   @@index([userId])
+  @@index([paymentSourceId])
+  @@index([paidWithCardId])
+  @@index([linkedCreditCardId])
+}
+
+model ExpenseTag {
+  id        String   @id @default(cuid())
+  expenseId String
+  name      String
+  createdAt DateTime @default(now())
+
+  expense Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+
+  @@index([expenseId])
 }
 
 model MonthlyExpense {
