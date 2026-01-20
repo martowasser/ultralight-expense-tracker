@@ -171,6 +171,50 @@ export default function EditExpenseModal({
           )}
 
           <div className="space-y-1">
+            <label htmlFor="category" className="block text-sm text-[#737373]">
+              category <span className="text-[#a3a3a3]">*</span>
+            </label>
+            <select
+              id="category"
+              value={category}
+              onChange={(e) => handleCategoryChange(e.target.value as ExpenseCategory)}
+              className="w-full px-3 py-3 text-base text-[#171717] bg-white border border-[#e5e5e5] focus:border-[#171717] focus:outline-none"
+              disabled={isSubmitting}
+              required
+            >
+              {CATEGORY_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Show card selector when category is Credit Card */}
+          {category === "CREDIT_CARD" && (
+            <div className="space-y-1">
+              <label htmlFor="linkedCreditCardId" className="block text-sm text-[#737373]">
+                credit card
+              </label>
+              <select
+                id="linkedCreditCardId"
+                value={linkedCreditCardId}
+                onChange={(e) => handleLinkedCardChange(e.target.value)}
+                className="w-full px-3 py-3 text-base text-[#171717] bg-white border border-[#e5e5e5] focus:border-[#171717] focus:outline-none"
+                disabled={isSubmitting}
+              >
+                <option value="">select a card</option>
+                {creditCards.map((card) => (
+                  <option key={card.id} value={card.id}>
+                    {card.institutionName} - {card.name}
+                    {card.lastFourDigits && ` (****${card.lastFourDigits})`}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div className="space-y-1">
             <label htmlFor="name" className="block text-sm text-[#737373]">
               name
             </label>
@@ -230,49 +274,6 @@ export default function EditExpenseModal({
               disabled={isSubmitting}
             />
           </div>
-
-          <div className="space-y-1">
-            <label htmlFor="category" className="block text-sm text-[#737373]">
-              category
-            </label>
-            <select
-              id="category"
-              value={category}
-              onChange={(e) => handleCategoryChange(e.target.value as ExpenseCategory)}
-              className="w-full px-3 py-3 text-base text-[#171717] bg-white border border-[#e5e5e5] focus:border-[#171717] focus:outline-none"
-              disabled={isSubmitting}
-            >
-              {CATEGORY_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Show card selector when category is Credit Card */}
-          {category === "CREDIT_CARD" && (
-            <div className="space-y-1">
-              <label htmlFor="linkedCreditCardId" className="block text-sm text-[#737373]">
-                credit card
-              </label>
-              <select
-                id="linkedCreditCardId"
-                value={linkedCreditCardId}
-                onChange={(e) => handleLinkedCardChange(e.target.value)}
-                className="w-full px-3 py-3 text-base text-[#171717] bg-white border border-[#e5e5e5] focus:border-[#171717] focus:outline-none"
-                disabled={isSubmitting}
-              >
-                <option value="">select a card</option>
-                {creditCards.map((card) => (
-                  <option key={card.id} value={card.id}>
-                    {card.institutionName} - {card.name}
-                    {card.lastFourDigits && ` (****${card.lastFourDigits})`}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
 
           {/* More Options Collapsible Section */}
           <div className="border-t border-[#e5e5e5] pt-4">

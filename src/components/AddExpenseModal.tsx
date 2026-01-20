@@ -46,7 +46,7 @@ export default function AddExpenseModal({
   const [amount, setAmount] = useState("");
   const [dueDay, setDueDay] = useState("");
   const [currency, setCurrency] = useState<Currency>("ARS");
-  const [category, setCategory] = useState<ExpenseCategory>("OTHER");
+  const [category, setCategory] = useState<ExpenseCategory | "">("");
 
   // More options state
   const [showMoreOptions, setShowMoreOptions] = useState(false);
@@ -65,6 +65,11 @@ export default function AddExpenseModal({
     setError("");
 
     // Client-side validation
+    if (!category) {
+      setError("category is required");
+      return;
+    }
+
     if (!name.trim()) {
       setError("name is required");
       return;
@@ -124,7 +129,7 @@ export default function AddExpenseModal({
   };
 
   // Handle category change - clear linkedCreditCardId if not CREDIT_CARD
-  const handleCategoryChange = (value: ExpenseCategory) => {
+  const handleCategoryChange = (value: ExpenseCategory | "") => {
     setCategory(value);
     if (value !== "CREDIT_CARD") {
       setLinkedCreditCardId("");
@@ -155,6 +160,51 @@ export default function AddExpenseModal({
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {error && (
             <p className="text-sm text-[#737373]">{error}</p>
+          )}
+
+          <div className="space-y-1">
+            <label htmlFor="category" className="block text-sm text-[#737373]">
+              category <span className="text-[#a3a3a3]">*</span>
+            </label>
+            <select
+              id="category"
+              value={category}
+              onChange={(e) => handleCategoryChange(e.target.value as ExpenseCategory | "")}
+              className="w-full px-3 py-3 text-base text-[#171717] bg-white border border-[#e5e5e5] focus:border-[#171717] focus:outline-none"
+              disabled={isSubmitting}
+              required
+            >
+              <option value="">select category</option>
+              {CATEGORY_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Show card selector when category is Credit Card */}
+          {category === "CREDIT_CARD" && (
+            <div className="space-y-1">
+              <label htmlFor="linkedCreditCardId" className="block text-sm text-[#737373]">
+                credit card
+              </label>
+              <select
+                id="linkedCreditCardId"
+                value={linkedCreditCardId}
+                onChange={(e) => handleLinkedCardChange(e.target.value)}
+                className="w-full px-3 py-3 text-base text-[#171717] bg-white border border-[#e5e5e5] focus:border-[#171717] focus:outline-none"
+                disabled={isSubmitting}
+              >
+                <option value="">select a card</option>
+                {creditCards.map((card) => (
+                  <option key={card.id} value={card.id}>
+                    {card.institutionName} - {card.name}
+                    {card.lastFourDigits && ` (****${card.lastFourDigits})`}
+                  </option>
+                ))}
+              </select>
+            </div>
           )}
 
           <div className="space-y-1">
@@ -217,49 +267,6 @@ export default function AddExpenseModal({
               disabled={isSubmitting}
             />
           </div>
-
-          <div className="space-y-1">
-            <label htmlFor="category" className="block text-sm text-[#737373]">
-              category
-            </label>
-            <select
-              id="category"
-              value={category}
-              onChange={(e) => handleCategoryChange(e.target.value as ExpenseCategory)}
-              className="w-full px-3 py-3 text-base text-[#171717] bg-white border border-[#e5e5e5] focus:border-[#171717] focus:outline-none"
-              disabled={isSubmitting}
-            >
-              {CATEGORY_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Show card selector when category is Credit Card */}
-          {category === "CREDIT_CARD" && (
-            <div className="space-y-1">
-              <label htmlFor="linkedCreditCardId" className="block text-sm text-[#737373]">
-                credit card
-              </label>
-              <select
-                id="linkedCreditCardId"
-                value={linkedCreditCardId}
-                onChange={(e) => handleLinkedCardChange(e.target.value)}
-                className="w-full px-3 py-3 text-base text-[#171717] bg-white border border-[#e5e5e5] focus:border-[#171717] focus:outline-none"
-                disabled={isSubmitting}
-              >
-                <option value="">select a card</option>
-                {creditCards.map((card) => (
-                  <option key={card.id} value={card.id}>
-                    {card.institutionName} - {card.name}
-                    {card.lastFourDigits && ` (****${card.lastFourDigits})`}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
 
           {/* More Options Collapsible Section */}
           <div className="border-t border-[#e5e5e5] pt-4">
