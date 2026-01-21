@@ -308,3 +308,19 @@ Started: Wed Jan 21 00:10:20 -03 2026
   - Shows dots on chart only when data points <= 30 for visual clarity
   - Empty state messages for: no snapshots, and less than 2 snapshots in range
 ---
+
+## 2026-01-21 - US-INV-019
+- What was implemented: Chart Overlays feature - toggle to show/hide cost basis and S&P 500 benchmark on performance chart
+- Files changed:
+  - src/components/PerformanceChart.tsx - Added showCostBasis and showBenchmark toggles, custom legend, multi-line chart support
+  - src/components/HistoryTab.tsx - Pass onFetchBenchmark callback to chart component
+  - src/app/investments/actions.ts - Added getBenchmarkData action to fetch historical SPY data from Yahoo Finance
+- **Learnings for future iterations:**
+  - Benchmark data uses SPY ETF as S&P 500 proxy via Yahoo Finance historical API v8
+  - Benchmark line is normalized to start at same value as portfolio for meaningful comparison
+  - Yahoo Finance historical endpoint: /v8/finance/chart/SPY?period1=X&period2=Y&interval=1d
+  - Cost basis line uses dashed style (strokeDasharray="5 5") to distinguish from solid lines
+  - Colors: portfolio=#171717 (black), cost basis=#3b82f6 (blue), S&P 500=#10b981 (green)
+  - onFetchBenchmark callback pattern allows parent to control data fetching while chart handles display
+  - Benchmark disabled state when onFetchBenchmark is not provided
+---
