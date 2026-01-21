@@ -132,7 +132,8 @@ export default function HoldingsView({
     const sourceNames: Record<string, string> = {
       binance: "Binance",
       yahoo: "Yahoo Finance",
-      coingecko: "CoinGecko",
+      coingecko: "CoinGecko (fallback)",
+      alphavantage: "Alpha Vantage (fallback)",
       manual: "Manual",
     };
 
