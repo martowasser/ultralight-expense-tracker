@@ -107,3 +107,21 @@ Started: Wed Jan 21 00:10:20 -03 2026
   - Filter by symbol/name, asset type, and platform works across aggregated holdings
   - InvestmentsList.tsx is still available but not used (HoldingsView replaced it)
 ---
+
+## 2026-01-21 - US-INV-006
+- What was implemented: Fetch Asset Prices feature - real-time price fetching from external APIs
+- Files changed:
+  - src/lib/priceService.ts - New service with Binance (crypto) and Yahoo Finance (stocks/ETFs) API integrations
+  - src/app/investments/actions.ts - Added fetchAssetPrices and getCachedPrices server actions with PriceCache integration
+  - src/components/AssetLibrarySection.tsx - Added price fetching on mount and refresh button
+  - src/components/HoldingsView.tsx - Added price display (current price, 24h change, gain/loss, source indicator, last updated)
+- **Learnings for future iterations:**
+  - PriceService routes crypto to Binance API, stocks/ETFs to Yahoo Finance API
+  - Binance uses SYMBOL+USDT format (e.g., BTCUSDT), Yahoo uses direct symbols
+  - Prices are cached in PriceCache model with 5-minute TTL
+  - CachedPrice type: { symbol, price, change24h, source, fetchedAt }
+  - formatPrice helper adjusts decimal places based on price magnitude (8 decimals for < $1, 2 for > $1000)
+  - formatSourceName maps source codes (binance, yahoo) to display names
+  - Holdings now show: current price, 24h change (color-coded), gain/loss amount and %, source indicator
+  - Prices are fetched automatically on mount and can be refreshed with button
+---
