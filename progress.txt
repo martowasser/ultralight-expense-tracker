@@ -246,3 +246,18 @@ Started: Wed Jan 21 00:10:20 -03 2026
   - Custom assets support manual price entry (no automated price fetching)
   - Modal placed next to "asset library" label for discoverability
 ---
+
+## 2026-01-21 - US-INV-015
+- What was implemented: Manual Price Entry feature - users can set and update prices for custom assets
+- Files changed:
+  - src/app/investments/actions.ts - Added setManualPrice and getCustomAssetsWithPrices server actions
+  - src/components/ManualPriceModal.tsx - New modal component for entering/updating manual prices
+  - src/components/HoldingsView.tsx - Added "set price" button for custom assets, "custom" badge, "manual price" indicator in blue text
+- **Learnings for future iterations:**
+  - Manual prices are stored in PriceCache with source "manual" - same table used for API-fetched prices
+  - Custom assets identified by isGlobal: false on the asset
+  - Holding interface extended with isCustom property to track which holdings are custom assets
+  - Manual price indicator shown in blue text ("manual price") to differentiate from API sources
+  - Pencil icon button appears next to manual prices for quick update access
+  - setManualPrice validates that asset is a custom asset owned by the user before allowing price updates
+---
