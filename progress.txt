@@ -499,3 +499,15 @@ Started: Wed Jan 21 00:10:20 -03 2026
   - handleRefresh now also calls fetchDividendTotal to update dashboard when dividends change
   - YTD total displayed with + prefix and currency symbol from displayCurrency setting
 ---
+
+## 2026-01-21 - US-INV-031
+- What was implemented: Investments Page Navigation - back button and header navigation for investments page
+- Files changed:
+  - src/components/AssetLibrarySection.tsx - Added back navigation link with left arrow icon pointing to /dashboard
+- **Learnings for future iterations:**
+  - Header.tsx already had investments link in navLinks array (added in US-INV-001)
+  - Back button placed at top of content area (before page title) for easy access
+  - Uses Link component from next/navigation for client-side navigation
+  - Touch-friendly sizing with min-h-[44px] for mobile accessibility
+  - Chevron left icon (path: M15 19l-7-7 7-7) used for back arrow
+---
