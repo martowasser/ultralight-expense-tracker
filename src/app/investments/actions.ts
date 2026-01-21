@@ -1072,6 +1072,169 @@ export async function clearPriceCache(): Promise<ClearCacheResult> {
   }
 }
 
+// ==========================================
+// Manual Price Entry Types
+// ==========================================
+
+export interface SetManualPriceInput {
+  assetId: string;
+  price: string;
+}
+
+export interface SetManualPriceResult {
+  success: boolean;
+  error?: string;
+  cachedPrice?: CachedPrice;
+}
+
+export interface GetCustomAssetsWithPricesResult {
+  success: boolean;
+  error?: string;
+  assets?: Array<Asset & { manualPrice?: CachedPrice }>;
+}
+
+// ==========================================
+// Manual Price Entry Actions
+// ==========================================
+
+/**
+ * Set a manual price for a custom asset
+ * Only works for custom assets (isGlobal: false) owned by the user
+ */
+export async function setManualPrice(input: SetManualPriceInput): Promise<SetManualPriceResult> {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  const { assetId, price } = input;
+
+  if (!assetId) {
+    return { success: false, error: "Asset ID is required" };
+  }
+
+  if (!price || price.trim() === "") {
+    return { success: false, error: "Price is required" };
+  }
+
+  const priceNum = parseFloat(price);
+  if (isNaN(priceNum) || priceNum < 0) {
+    return { success: false, error: "Price must be a non-negative number" };
+  }
+
+  try {
+    // Verify the asset is a custom asset owned by the user
+    const asset = await prisma.asset.findFirst({
+      where: {
+        id: assetId,
+        isGlobal: false, // Must be a custom asset
+        userId: session.user.id, // Must be owned by the user
+      },
+    });
+
+    if (!asset) {
+      return { success: false, error: "Custom asset not found or not accessible" };
+    }
+
+    // Upsert the price in the cache with source "manual"
+    const cachedPrice = await prisma.priceCache.upsert({
+      where: { symbol: asset.symbol },
+      create: {
+        symbol: asset.symbol,
+        price: priceNum,
+        change24h: null, // No 24h change for manual prices
+        source: "manual",
+        fetchedAt: new Date(),
+      },
+      update: {
+        price: priceNum,
+        change24h: null,
+        source: "manual",
+        fetchedAt: new Date(),
+      },
+    });
+
+    return {
+      success: true,
+      cachedPrice: {
+        symbol: cachedPrice.symbol,
+        price: cachedPrice.price.toString(),
+        change24h: cachedPrice.change24h?.toString() ?? null,
+        source: cachedPrice.source,
+        fetchedAt: cachedPrice.fetchedAt,
+      },
+    };
+  } catch (error) {
+    console.error("Error setting manual price:", error);
+    return { success: false, error: "Failed to set manual price" };
+  }
+}
+
+/**
+ * Get all custom assets with their manual prices (if any)
+ */
+export async function getCustomAssetsWithPrices(): Promise<GetCustomAssetsWithPricesResult> {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  try {
+    // Get user's custom assets
+    const customAssets = await prisma.asset.findMany({
+      where: {
+        userId: session.user.id,
+        isGlobal: false,
+      },
+      orderBy: { symbol: "asc" },
+    });
+
+    if (customAssets.length === 0) {
+      return { success: true, assets: [] };
+    }
+
+    // Get cached prices for these symbols
+    const symbols = customAssets.map((a) => a.symbol);
+    const cachedPrices = await prisma.priceCache.findMany({
+      where: { symbol: { in: symbols } },
+    });
+
+    const priceMap = new Map(cachedPrices.map((p) => [p.symbol, p]));
+
+    // Combine assets with their prices
+    const assetsWithPrices = customAssets.map((asset) => {
+      const price = priceMap.get(asset.symbol);
+      return {
+        id: asset.id,
+        symbol: asset.symbol,
+        name: asset.name,
+        type: asset.type,
+        precision: asset.precision,
+        isActive: asset.isActive,
+        isGlobal: asset.isGlobal,
+        userId: asset.userId,
+        createdAt: asset.createdAt,
+        manualPrice: price
+          ? {
+              symbol: price.symbol,
+              price: price.price.toString(),
+              change24h: price.change24h?.toString() ?? null,
+              source: price.source,
+              fetchedAt: price.fetchedAt,
+            }
+          : undefined,
+      };
+    });
+
+    return { success: true, assets: assetsWithPrices };
+  } catch (error) {
+    console.error("Error getting custom assets with prices:", error);
+    return { success: false, error: "Failed to get custom assets" };
+  }
+}
+
 /**
  * Get cache statistics for monitoring
  * Returns info about cached prices, freshness, and hit rate

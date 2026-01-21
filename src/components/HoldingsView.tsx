@@ -2,9 +2,10 @@
 
 import React, { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Investment, CachedPrice } from "@/app/investments/actions";
+import { Investment, CachedPrice, Asset } from "@/app/investments/actions";
 import { AssetType } from "@/generated/prisma/enums";
 import DeleteInvestmentModal from "./DeleteInvestmentModal";
+import ManualPriceModal from "./ManualPriceModal";
 
 // Asset type icon colors (Tailwind needs full class names, not dynamic construction)
 const assetTypeColors: Record<AssetType, string> = {
@@ -51,6 +52,11 @@ interface HoldingsViewProps {
   onEditInvestment?: (investment: Investment) => void;
 }
 
+// Helper to check if an asset is a custom asset (not global)
+const isCustomAsset = (investment: Investment): boolean => {
+  return !investment.asset.isGlobal;
+};
+
 interface Holding {
   symbol: string;
   name: string;
@@ -67,6 +73,8 @@ interface Holding {
   currentValue?: number;
   gainLoss?: number;
   gainLossPercent?: number;
+  // Custom asset tracking
+  isCustom: boolean;
 }
 
 export default function HoldingsView({
@@ -84,11 +92,21 @@ export default function HoldingsView({
   const [symbolFilter, setSymbolFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState<AssetType | "ALL">("ALL");
   const [platformFilter, setPlatformFilter] = useState<string>("ALL");
+  const [manualPriceAsset, setManualPriceAsset] = useState<{ asset: Asset; price?: CachedPrice } | null>(null);
   const router = useRouter();
 
   const handleDeleteSuccess = () => {
     setDeleteInvestmentId(null);
     onRefresh();
+    router.refresh();
+  };
+
+  const handleManualPriceSuccess = () => {
+    setManualPriceAsset(null);
+    onRefresh();
+    if (onRefreshPrices) {
+      onRefreshPrices(false);
+    }
     router.refresh();
   };
 
@@ -218,6 +236,7 @@ export default function HoldingsView({
           totalCost: cost,
           weightedAvgPrice: 0, // Will be calculated below
           lots: [investment],
+          isCustom: isCustomAsset(investment),
         });
       }
     });
@@ -451,6 +470,11 @@ export default function HoldingsView({
                             <div>
                               <div className="flex items-center gap-2">
                                 <span className="font-medium text-[#171717]">{holding.symbol}</span>
+                                {holding.isCustom && (
+                                  <span className="text-xs text-blue-600 px-1.5 py-0.5 bg-blue-50 rounded">
+                                    custom
+                                  </span>
+                                )}
                                 {hasMultipleLots && (
                                   <span className="text-xs text-[#fafafa] px-1.5 py-0.5 bg-[#737373] rounded">
                                     {holding.lots.length} lots
@@ -480,11 +504,47 @@ export default function HoldingsView({
                         <td className="px-4 py-3 text-right">
                           {holding.currentPrice !== undefined ? (
                             <div>
-                              <span className="text-[#171717]">${formatPrice(holding.currentPrice)}</span>
+                              <div className="flex items-center justify-end gap-1">
+                                <span className="text-[#171717]">${formatPrice(holding.currentPrice)}</span>
+                                {holding.isCustom && holding.priceSource === "manual" && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const priceData = priceMap.get(holding.symbol);
+                                      setManualPriceAsset({
+                                        asset: holding.lots[0].asset,
+                                        price: priceData,
+                                      });
+                                    }}
+                                    className="p-0.5 text-[#a3a3a3] hover:text-[#171717]"
+                                    title="Update price"
+                                  >
+                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                    </svg>
+                                  </button>
+                                )}
+                              </div>
                               {holding.priceSource && (
-                                <span className="block text-xs text-[#a3a3a3]">via {formatSourceName(holding.priceSource)}</span>
+                                <span className={`block text-xs ${holding.priceSource === "manual" ? "text-blue-600" : "text-[#a3a3a3]"}`}>
+                                  {holding.priceSource === "manual" ? "manual price" : `via ${formatSourceName(holding.priceSource)}`}
+                                </span>
                               )}
                             </div>
+                          ) : holding.isCustom ? (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setManualPriceAsset({
+                                  asset: holding.lots[0].asset,
+                                });
+                              }}
+                              className="text-xs text-blue-600 hover:text-blue-800 underline"
+                            >
+                              set price
+                            </button>
                           ) : (
                             <span className="text-[#a3a3a3]">—</span>
                           )}
@@ -623,7 +683,7 @@ export default function HoldingsView({
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
                         {/* Symbol, Name, Type Icon, and Lot Badge */}
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className={assetTypeColors[holding.type]}>
                             <AssetTypeIcon type={holding.type} />
                           </span>
@@ -633,6 +693,11 @@ export default function HoldingsView({
                           <span className="text-xs text-[#a3a3a3] px-1.5 py-0.5 bg-[#f5f5f5] rounded">
                             {holding.type.toLowerCase()}
                           </span>
+                          {holding.isCustom && (
+                            <span className="text-xs text-blue-600 px-1.5 py-0.5 bg-blue-50 rounded">
+                              custom
+                            </span>
+                          )}
                           {hasMultipleLots && (
                             <span className="text-xs text-[#fafafa] px-1.5 py-0.5 bg-[#737373] rounded">
                               {holding.lots.length} lots
@@ -644,11 +709,32 @@ export default function HoldingsView({
                         </p>
 
                         {/* Price and Market Data */}
-                        {holding.currentPrice !== undefined && (
+                        {holding.currentPrice !== undefined ? (
                           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
-                            <span className="text-[#171717] font-medium">
-                              ${formatPrice(holding.currentPrice)}
-                            </span>
+                            <div className="flex items-center gap-1">
+                              <span className="text-[#171717] font-medium">
+                                ${formatPrice(holding.currentPrice)}
+                              </span>
+                              {holding.isCustom && holding.priceSource === "manual" && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const priceData = priceMap.get(holding.symbol);
+                                    setManualPriceAsset({
+                                      asset: holding.lots[0].asset,
+                                      price: priceData,
+                                    });
+                                  }}
+                                  className="p-0.5 text-[#a3a3a3] hover:text-[#171717]"
+                                  title="Update price"
+                                >
+                                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                  </svg>
+                                </button>
+                              )}
+                            </div>
                             {holding.change24h !== null && holding.change24h !== undefined && (
                               <span
                                 className={`px-1.5 py-0.5 rounded ${
@@ -662,12 +748,27 @@ export default function HoldingsView({
                               </span>
                             )}
                             {holding.priceSource && (
-                              <span className="text-[#a3a3a3]">
-                                via {formatSourceName(holding.priceSource)}
+                              <span className={holding.priceSource === "manual" ? "text-blue-600" : "text-[#a3a3a3]"}>
+                                {holding.priceSource === "manual" ? "manual price" : `via ${formatSourceName(holding.priceSource)}`}
                               </span>
                             )}
                           </div>
-                        )}
+                        ) : holding.isCustom ? (
+                          <div className="mt-2">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setManualPriceAsset({
+                                  asset: holding.lots[0].asset,
+                                });
+                              }}
+                              className="text-xs text-blue-600 hover:text-blue-800 underline"
+                            >
+                              set price
+                            </button>
+                          </div>
+                        ) : null}
 
                         {/* Aggregated Details */}
                         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#737373]">
@@ -814,6 +915,16 @@ export default function HoldingsView({
           investmentId={deleteInvestmentId}
           onClose={() => setDeleteInvestmentId(null)}
           onSuccess={handleDeleteSuccess}
+        />
+      )}
+
+      {/* Manual Price Modal for Custom Assets */}
+      {manualPriceAsset && (
+        <ManualPriceModal
+          asset={manualPriceAsset.asset}
+          currentPrice={manualPriceAsset.price}
+          onClose={() => setManualPriceAsset(null)}
+          onSuccess={handleManualPriceSuccess}
         />
       )}
     </div>
