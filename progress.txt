@@ -172,3 +172,19 @@ Started: Wed Jan 21 00:10:20 -03 2026
   - Expanded lot rows in table show platform, date, quantity, price, cost, and edit/delete actions
   - `hidden md:block` and `md:hidden` classes control responsive visibility
 ---
+
+## 2026-01-21 - US-INV-010
+- What was implemented: Edit Investment feature - modify existing investment entries
+- Files changed:
+  - src/app/investments/actions.ts - Added updateInvestment server action with validation and ownership check
+  - src/components/EditInvestmentModal.tsx - New modal component pre-populated with current investment values
+  - src/components/AssetLibrarySection.tsx - Added editingInvestment state and EditInvestmentModal integration
+- **Learnings for future iterations:**
+  - EditInvestmentModal mirrors AddInvestmentModal structure but pre-populates all fields from investment
+  - Symbol and asset type displayed as read-only (cannot be changed - must delete and recreate)
+  - Platform field checks if current platform is in PLATFORMS array using `(PLATFORMS as readonly string[]).includes()`
+  - updateInvestment action verifies ownership with userId check before allowing update
+  - Same validation rules apply as createInvestment (quantity precision, positive numbers, etc.)
+  - onEditInvestment callback passed through HoldingsView, triggered from edit buttons on lots
+  - handleEditSuccess closes modal and calls handleRefresh to update UI
+---
