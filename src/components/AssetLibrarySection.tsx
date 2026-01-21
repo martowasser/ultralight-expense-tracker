@@ -11,7 +11,7 @@ import PortfolioDashboard from "./PortfolioDashboard";
 import HistoryTab from "./HistoryTab";
 import DividendsTab from "./DividendsTab";
 import UserCurrencySettings from "./UserCurrencySettings";
-import { Asset, Investment, CachedPrice, HoldingDividendYield, UserSettings, CurrencyConversionRates, getAssets, getInvestments, GetAssetsInput, fetchAssetPrices, clearPriceCache, getHoldingDividendYields, getUserSettings, getPortfolioExchangeRates } from "@/app/investments/actions";
+import { Asset, Investment, CachedPrice, HoldingDividendYield, UserSettings, CurrencyConversionRates, getAssets, getInvestments, GetAssetsInput, fetchAssetPrices, clearPriceCache, getHoldingDividendYields, getUserSettings, getPortfolioExchangeRates, updateDisplayCurrency } from "@/app/investments/actions";
 import { AssetType, Currency } from "@/generated/prisma/enums";
 
 type TabType = "holdings" | "history" | "dividends";
@@ -35,6 +35,7 @@ export default function AssetLibrarySection({
   const [prices, setPrices] = useState<CachedPrice[]>([]);
   const [dividendYields, setDividendYields] = useState<HoldingDividendYield[]>([]);
   const [exchangeRates, setExchangeRates] = useState<CurrencyConversionRates>({});
+  const [currencyLoading, setCurrencyLoading] = useState(false);
   const [pricesLoading, setPricesLoading] = useState(false);
   const [lastPriceUpdate, setLastPriceUpdate] = useState<Date | null>(null);
   const [refreshFeedback, setRefreshFeedback] = useState<RefreshFeedback | null>(null);
@@ -74,6 +75,23 @@ export default function AssetLibrarySection({
     // Fetch new exchange rates when display currency changes
     fetchExchangeRatesData(settings.displayCurrency);
   };
+
+  // Handle quick currency change from portfolio header dropdown
+  const handleCurrencyChange = useCallback(async (currency: Currency) => {
+    if (currency === displayCurrency) return;
+
+    setCurrencyLoading(true);
+
+    // Update display currency in user settings (persists the selection)
+    const result = await updateDisplayCurrency(currency);
+    if (result.success && result.settings) {
+      setDisplayCurrency(result.settings.displayCurrency);
+      // Fetch new exchange rates for the selected currency
+      await fetchExchangeRatesData(result.settings.displayCurrency);
+    }
+
+    setCurrencyLoading(false);
+  }, [displayCurrency, fetchExchangeRatesData]);
 
   const fetchAssets = useCallback(async () => {
     setIsLoading(true);
@@ -324,6 +342,8 @@ export default function AssetLibrarySection({
         prices={prices}
         displayCurrency={displayCurrency}
         exchangeRates={exchangeRates}
+        onCurrencyChange={handleCurrencyChange}
+        isCurrencyLoading={currencyLoading}
       />
 
       {/* Tab Navigation */}

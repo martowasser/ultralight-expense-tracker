@@ -4,12 +4,15 @@ import { useMemo } from "react";
 import { Investment, CachedPrice, CurrencyConversionRates } from "@/app/investments/actions";
 import { AssetType, Currency } from "@/generated/prisma/enums";
 import { CURRENCY_INFO } from "@/app/investments/constants";
+import PortfolioCurrencySelector from "./PortfolioCurrencySelector";
 
 interface PortfolioDashboardProps {
   investments: Investment[];
   prices: CachedPrice[];
   displayCurrency?: Currency;
   exchangeRates?: CurrencyConversionRates;
+  onCurrencyChange?: (currency: Currency) => void;
+  isCurrencyLoading?: boolean;
 }
 
 interface PortfolioMetrics {
@@ -31,6 +34,8 @@ export default function PortfolioDashboard({
   prices,
   displayCurrency = "USD",
   exchangeRates = {},
+  onCurrencyChange,
+  isCurrencyLoading = false,
 }: PortfolioDashboardProps) {
   // Get currency symbol for display
   const getCurrencySymbol = (currency: Currency): string => {
@@ -161,7 +166,17 @@ export default function PortfolioDashboard({
 
   return (
     <div className="space-y-4">
-      <span className="text-sm text-[#737373]">portfolio overview</span>
+      {/* Header with Currency Selector */}
+      <div className="flex items-center justify-between">
+        <span className="text-sm text-[#737373]">portfolio overview</span>
+        {onCurrencyChange && (
+          <PortfolioCurrencySelector
+            value={displayCurrency}
+            onChange={onCurrencyChange}
+            isLoading={isCurrencyLoading}
+          />
+        )}
+      </div>
 
       {/* Main Metrics Grid */}
       <div className="grid grid-cols-2 gap-3">
