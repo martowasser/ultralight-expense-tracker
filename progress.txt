@@ -486,3 +486,16 @@ Started: Wed Jan 21 00:10:20 -03 2026
   - Dropdown uses click-outside pattern with ref and mousedown event listener
   - CURRENCY_INFO from constants.ts provides symbol display for currency codes
 ---
+
+## 2026-01-21 - US-INV-030
+- What was implemented: Dashboard Dividend Metric - YTD dividend total displayed on portfolio dashboard
+- Files changed:
+  - src/components/PortfolioDashboard.tsx - Added ytdDividendTotal prop and dividend metric card
+  - src/components/AssetLibrarySection.tsx - Added fetchDividendTotal function, ytdDividendTotal state, fetches on mount and refresh
+- **Learnings for future iterations:**
+  - Reuses existing getDividendSummary action from US-INV-022 (no new action needed)
+  - Dashboard metrics grid changed from 2+full-width to 2x2 layout for better balance
+  - Dividend metric uses green color to indicate income (consistent with DividendSummary component)
+  - handleRefresh now also calls fetchDividendTotal to update dashboard when dividends change
+  - YTD total displayed with + prefix and currency symbol from displayCurrency setting
+---
