@@ -1,20 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Investment } from "@/app/investments/actions";
+import { AssetType } from "@/generated/prisma/enums";
 import DeleteInvestmentModal from "./DeleteInvestmentModal";
 
 interface InvestmentsListProps {
   investments: Investment[];
   onRefresh: () => void;
+  onAddInvestment?: () => void;
 }
 
 export default function InvestmentsList({
   investments,
   onRefresh,
+  onAddInvestment,
 }: InvestmentsListProps) {
   const [deleteInvestmentId, setDeleteInvestmentId] = useState<string | null>(null);
+  const [symbolFilter, setSymbolFilter] = useState("");
+  const [typeFilter, setTypeFilter] = useState<AssetType | "ALL">("ALL");
+  const [platformFilter, setPlatformFilter] = useState<string>("ALL");
   const router = useRouter();
 
   const handleDeleteSuccess = () => {
@@ -31,19 +37,172 @@ export default function InvestmentsList({
     });
   };
 
+  // Get unique platforms from user's investments
+  const uniquePlatforms = useMemo(() => {
+    const platforms = new Set(investments.map((inv) => inv.platform));
+    return Array.from(platforms).sort();
+  }, [investments]);
+
+  // Filter investments based on search and filters
+  const filteredInvestments = useMemo(() => {
+    return investments.filter((investment) => {
+      // Symbol filter (case-insensitive)
+      if (symbolFilter.trim()) {
+        const search = symbolFilter.trim().toLowerCase();
+        const matchesSymbol = investment.asset.symbol.toLowerCase().includes(search);
+        const matchesName = investment.asset.name.toLowerCase().includes(search);
+        if (!matchesSymbol && !matchesName) return false;
+      }
+
+      // Type filter
+      if (typeFilter !== "ALL" && investment.asset.type !== typeFilter) {
+        return false;
+      }
+
+      // Platform filter
+      if (platformFilter !== "ALL" && investment.platform !== platformFilter) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [investments, symbolFilter, typeFilter, platformFilter]);
+
+  // Empty state for new users (no investments at all)
   if (investments.length === 0) {
-    return null;
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-[#737373]">your investments</span>
+        </div>
+        <div className="border border-[#e5e5e5] bg-white p-8 text-center">
+          <p className="text-sm text-[#737373] mb-4">
+            you don&apos;t have any investments yet
+          </p>
+          <p className="text-xs text-[#a3a3a3] mb-6">
+            start tracking your portfolio by adding your first investment
+          </p>
+          {onAddInvestment && (
+            <button
+              onClick={onAddInvestment}
+              className="px-4 py-3 text-sm text-[#fafafa] bg-[#171717] hover:bg-[#404040] min-h-[44px]"
+            >
+              + add your first investment
+            </button>
+          )}
+        </div>
+      </div>
+    );
   }
+
+  const hasActiveFilters = symbolFilter.trim() || typeFilter !== "ALL" || platformFilter !== "ALL";
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <span className="text-sm text-[#737373]">your investments</span>
-        <span className="text-xs text-[#a3a3a3]">{investments.length} lot{investments.length === 1 ? "" : "s"}</span>
+        <span className="text-xs text-[#a3a3a3]">
+          {filteredInvestments.length === investments.length
+            ? `${investments.length} lot${investments.length === 1 ? "" : "s"}`
+            : `${filteredInvestments.length} of ${investments.length} lots`}
+        </span>
       </div>
 
-      <div className="border border-[#e5e5e5] divide-y divide-[#e5e5e5]">
-        {investments.map((investment) => {
+      {/* Filter Controls */}
+      <div className="flex flex-col gap-3">
+        {/* Symbol Search */}
+        <input
+          type="text"
+          placeholder="filter by symbol or name..."
+          value={symbolFilter}
+          onChange={(e) => setSymbolFilter(e.target.value)}
+          className="w-full px-3 py-2 text-sm text-[#171717] bg-white border border-[#e5e5e5] focus:border-[#171717] focus:outline-none"
+        />
+
+        {/* Type and Platform Filters */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          {/* Type Filter */}
+          <div className="flex gap-1 flex-wrap">
+            <button
+              onClick={() => setTypeFilter("ALL")}
+              className={`px-2 py-1.5 text-xs min-h-[32px] border ${
+                typeFilter === "ALL"
+                  ? "bg-[#171717] text-[#fafafa] border-[#171717]"
+                  : "bg-white text-[#737373] border-[#e5e5e5] hover:text-[#171717]"
+              }`}
+            >
+              all types
+            </button>
+            <button
+              onClick={() => setTypeFilter("CRYPTO")}
+              className={`px-2 py-1.5 text-xs min-h-[32px] border ${
+                typeFilter === "CRYPTO"
+                  ? "bg-[#171717] text-[#fafafa] border-[#171717]"
+                  : "bg-white text-[#737373] border-[#e5e5e5] hover:text-[#171717]"
+              }`}
+            >
+              crypto
+            </button>
+            <button
+              onClick={() => setTypeFilter("STOCK")}
+              className={`px-2 py-1.5 text-xs min-h-[32px] border ${
+                typeFilter === "STOCK"
+                  ? "bg-[#171717] text-[#fafafa] border-[#171717]"
+                  : "bg-white text-[#737373] border-[#e5e5e5] hover:text-[#171717]"
+              }`}
+            >
+              stocks
+            </button>
+            <button
+              onClick={() => setTypeFilter("ETF")}
+              className={`px-2 py-1.5 text-xs min-h-[32px] border ${
+                typeFilter === "ETF"
+                  ? "bg-[#171717] text-[#fafafa] border-[#171717]"
+                  : "bg-white text-[#737373] border-[#e5e5e5] hover:text-[#171717]"
+              }`}
+            >
+              etfs
+            </button>
+          </div>
+
+          {/* Platform Filter */}
+          {uniquePlatforms.length > 1 && (
+            <select
+              value={platformFilter}
+              onChange={(e) => setPlatformFilter(e.target.value)}
+              className="px-2 py-1.5 text-xs text-[#171717] bg-white border border-[#e5e5e5] focus:border-[#171717] focus:outline-none min-h-[32px]"
+            >
+              <option value="ALL">all platforms</option>
+              {uniquePlatforms.map((platform) => (
+                <option key={platform} value={platform}>
+                  {platform}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+      </div>
+
+      {/* Investment List or No Results */}
+      {filteredInvestments.length === 0 ? (
+        <div className="border border-[#e5e5e5] bg-white p-6 text-center">
+          <p className="text-sm text-[#737373]">no investments match your filters</p>
+          {hasActiveFilters && (
+            <button
+              onClick={() => {
+                setSymbolFilter("");
+                setTypeFilter("ALL");
+                setPlatformFilter("ALL");
+              }}
+              className="mt-3 px-3 py-2 text-xs text-[#737373] border border-[#e5e5e5] hover:border-[#a3a3a3] hover:text-[#171717]"
+            >
+              clear filters
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="border border-[#e5e5e5] divide-y divide-[#e5e5e5]">
+          {filteredInvestments.map((investment) => {
           const totalCost = (
             parseFloat(investment.quantity) * parseFloat(investment.purchasePrice)
           ).toFixed(2);
@@ -99,7 +258,8 @@ export default function InvestmentsList({
             </div>
           );
         })}
-      </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Modal */}
       {deleteInvestmentId && (

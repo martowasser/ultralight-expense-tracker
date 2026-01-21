@@ -159,7 +159,11 @@ export default function AssetLibrarySection({
       )}
 
       {/* User's Investments */}
-      <InvestmentsList investments={investments} onRefresh={handleRefresh} />
+      <InvestmentsList
+        investments={investments}
+        onRefresh={handleRefresh}
+        onAddInvestment={() => setShowAddModal(true)}
+      />
 
       {/* Add Investment Modal */}
       {showAddModal && (
