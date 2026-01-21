@@ -6,6 +6,7 @@ import {
   getPortfolioSnapshots,
   createManualSnapshot,
 } from "@/app/investments/actions";
+import PerformanceChart from "./PerformanceChart";
 
 interface HistoryTabProps {
   onRefresh: () => void;
@@ -201,6 +202,12 @@ export default function HistoryTab({ onRefresh }: HistoryTabProps) {
           </button>
         </div>
       )}
+
+      {/* Performance Chart */}
+      <div className="border border-[#e5e5e5] bg-white p-4">
+        <h3 className="text-sm font-medium text-[#171717] mb-4">portfolio performance</h3>
+        <PerformanceChart snapshots={snapshots} />
+      </div>
 
       {/* Snapshots List */}
       {snapshots.length === 0 ? (
