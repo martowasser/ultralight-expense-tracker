@@ -2435,6 +2435,59 @@ export async function getHoldingDividendYields(): Promise<GetHoldingDividendYiel
   }
 }
 
+// ==========================================
+// Delete Dividend Types
+// ==========================================
+
+export interface DeleteDividendResult {
+  success: boolean;
+  error?: string;
+}
+
+// ==========================================
+// Delete Dividend Action
+// ==========================================
+
+/**
+ * Delete a dividend record
+ * Verifies the dividend belongs to the current user before deletion
+ */
+export async function deleteDividend(dividendId: string): Promise<DeleteDividendResult> {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  if (!dividendId) {
+    return { success: false, error: "Dividend ID is required" };
+  }
+
+  try {
+    // Find the dividend and ensure it belongs to the current user
+    const dividend = await prisma.dividend.findFirst({
+      where: {
+        id: dividendId,
+        userId: session.user.id, // Cannot delete other users' dividends
+      },
+    });
+
+    if (!dividend) {
+      return { success: false, error: "Dividend not found" };
+    }
+
+    // Delete the dividend
+    await prisma.dividend.delete({
+      where: { id: dividendId },
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting dividend:", error);
+    return { success: false, error: "Failed to delete dividend" };
+  }
+}
+
 /**
  * Create a new dividend record
  */

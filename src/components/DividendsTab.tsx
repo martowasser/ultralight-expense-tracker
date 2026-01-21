@@ -6,6 +6,7 @@ import { DIVIDEND_TYPES } from "@/app/investments/constants";
 import { DividendType } from "@/generated/prisma/enums";
 import RecordDividendModal from "./RecordDividendModal";
 import DividendSummary from "./DividendSummary";
+import DeleteDividendModal from "./DeleteDividendModal";
 
 interface DividendsTabProps {
   investments: Investment[];
@@ -45,6 +46,7 @@ export default function DividendsTab({ investments, onRefresh }: DividendsTabPro
   const [isLoading, setIsLoading] = useState(true);
   const [summary, setSummary] = useState<DividendSummaryType | null>(null);
   const [isSummaryLoading, setIsSummaryLoading] = useState(true);
+  const [dividendToDelete, setDividendToDelete] = useState<Dividend | null>(null);
 
   // Filter states
   const [symbolFilter, setSymbolFilter] = useState("");
@@ -102,6 +104,28 @@ export default function DividendsTab({ investments, onRefresh }: DividendsTabPro
 
   const handleRecordSuccess = () => {
     setShowRecordModal(false);
+    // Refetch dividends
+    getDividends({
+      symbol: symbolFilter || undefined,
+      startDate: startDateFilter || undefined,
+      endDate: endDateFilter || undefined,
+      type: typeFilter || undefined,
+    }).then((result) => {
+      if (result.success && result.dividends) {
+        setDividends(result.dividends);
+      }
+    });
+    // Refetch summary to update metrics
+    getDividendSummary().then((result) => {
+      if (result.success && result.summary) {
+        setSummary(result.summary);
+      }
+    });
+    onRefresh();
+  };
+
+  const handleDeleteSuccess = () => {
+    setDividendToDelete(null);
     // Refetch dividends
     getDividends({
       symbol: symbolFilter || undefined,
@@ -359,6 +383,9 @@ export default function DividendsTab({ investments, onRefresh }: DividendsTabPro
                   <th className="text-left py-3 px-2 font-medium text-[#737373] text-xs uppercase tracking-wide">
                     Notes
                   </th>
+                  <th className="text-right py-3 px-2 font-medium text-[#737373] text-xs uppercase tracking-wide">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -408,6 +435,27 @@ export default function DividendsTab({ investments, onRefresh }: DividendsTabPro
                     <td className="py-3 px-2 text-[#737373] text-xs max-w-[150px] truncate">
                       {dividend.notes || "-"}
                     </td>
+                    <td className="py-3 px-2 text-right">
+                      <button
+                        onClick={() => setDividendToDelete(dividend)}
+                        className="p-1.5 text-[#a3a3a3] hover:text-[#ef4444] hover:bg-red-50 transition-colors"
+                        title="Delete dividend"
+                      >
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={1.5}
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                          />
+                        </svg>
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -430,9 +478,30 @@ export default function DividendsTab({ investments, onRefresh }: DividendsTabPro
                       {dividend.investment.asset.name}
                     </span>
                   </div>
-                  <span className="font-medium text-[#22c55e]">
-                    {formatAmount(dividend.amount, dividend.currency)}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-[#22c55e]">
+                      {formatAmount(dividend.amount, dividend.currency)}
+                    </span>
+                    <button
+                      onClick={() => setDividendToDelete(dividend)}
+                      className="p-1.5 text-[#a3a3a3] hover:text-[#ef4444] hover:bg-red-50 transition-colors"
+                      title="Delete dividend"
+                    >
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={1.5}
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                        />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 text-xs text-[#737373]">
                   <span>{formatDate(dividend.paymentDate)}</span>
@@ -462,6 +531,15 @@ export default function DividendsTab({ investments, onRefresh }: DividendsTabPro
           investments={investments}
           onClose={() => setShowRecordModal(false)}
           onSuccess={handleRecordSuccess}
+        />
+      )}
+
+      {/* Delete Dividend Modal */}
+      {dividendToDelete && (
+        <DeleteDividendModal
+          dividend={dividendToDelete}
+          onClose={() => setDividendToDelete(null)}
+          onSuccess={handleDeleteSuccess}
         />
       )}
     </div>
