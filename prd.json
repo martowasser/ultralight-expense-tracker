@@ -1,180 +1,515 @@
 {
-  "project": "Monthly Expense Tracker - Comprehensive Edition",
-  "branchName": "ralph/expense-tracker-v2",
-  "description": "A web application for users with complex financial situations involving multiple banks, credit cards, currencies, and income sources. Helps track monthly recurring expenses, understand cash flow across accounts, and plan payments.",
+  "project": "Investments Module",
+  "branchName": "feature/investments-module",
+  "description": "A comprehensive investment portfolio tracker within the personal finance application. Enables users to track investment purchases across multiple asset types (crypto, stocks, ETFs) and platforms, monitor real-time valuations, analyze portfolio performance with gain/loss calculations, track dividends, view historical performance, and manage assets in multiple currencies.",
   "userStories": [
     {
-      "id": "US-020",
-      "title": "Create Institution Management",
-      "description": "As a user, I want to add and manage my financial institutions (banks, fintech apps, crypto exchanges) so I can organize my credit cards and accounts by institution.",
+      "id": "US-INV-001",
+      "title": "Browse Asset Library",
+      "description": "As a user, I want to browse available assets so I can find investments to track.",
       "acceptanceCriteria": [
-        "Can add institution with name and type (Bank, Fintech, Crypto Exchange, Payment Platform)",
-        "Can edit institution name and type",
-        "Can delete institution (with confirmation, cascades to accounts and cards)",
-        "Institutions page shows all institutions grouped by type",
-        "Typecheck passes"
-      ],
-      "priority": 1,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-021",
-      "title": "Create Account Management",
-      "description": "As a user, I want to add accounts within my institutions so I can track which account pays which expenses.",
-      "acceptanceCriteria": [
-        "Can add account to an institution with name and currency (ARS/USD)",
-        "Can edit account details",
-        "Can delete account",
-        "Accounts shown under their institution on the institutions page",
-        "Typecheck passes"
-      ],
-      "priority": 2,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-022",
-      "title": "Create Credit Card Management",
-      "description": "As a user, I want to add and manage my credit cards so I can track my credit card payments and link expenses to cards.",
-      "acceptanceCriteria": [
-        "Dedicated /credit-cards page",
-        "Can add credit card with: institution, name, brand (VISA/MC/AMEX/Other), last 4 digits (optional), due day",
-        "Can edit credit card details",
-        "Can delete credit card",
-        "Cards grouped by institution on the page",
-        "Typecheck passes"
-      ],
-      "priority": 3,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-023",
-      "title": "Add Multi-Currency Support to Expenses",
-      "description": "As a user, I want to track expenses in both ARS and USD so I can accurately track my USD rent and other foreign currency expenses.",
-      "acceptanceCriteria": [
-        "Expense form includes currency selector (ARS/USD)",
-        "USD expenses show approximate ARS equivalent on dashboard",
-        "Monthly totals show separate ARS and USD amounts",
-        "Existing expenses default to ARS",
-        "Typecheck passes"
-      ],
-      "priority": 4,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-024",
-      "title": "Add Expense Categories",
-      "description": "As a user, I want to categorize my expenses so I can see my expenses organized by type on the dashboard.",
-      "acceptanceCriteria": [
-        "Expense form includes category dropdown with fixed options",
-        "Categories: Credit Card, Service, Rent, Insurance, Tax, Subscription, Building Fee, Other",
-        "Dashboard groups expenses by category",
-        "Category subtotals shown per category",
-        "Empty categories hidden",
-        "Existing expenses default to Other category",
-        "Typecheck passes"
-      ],
-      "priority": 5,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-025",
-      "title": "Add Payment Method to Expenses (Progressive Disclosure)",
-      "description": "As a user, I want to optionally specify how I pay each expense so I can track which account or card pays what.",
-      "acceptanceCriteria": [
-        "Expense form has collapsible 'More options' section",
-        "More options includes: payment method, payment source account, paid with card",
-        "Payment methods: Bank Transfer, Direct Debit, Cash, Crypto Exchange, Credit Card",
-        "If 'Credit Card' selected, show card selector",
-        "If other methods, show account selector (optional)",
-        "All payment fields are optional",
-        "Typecheck passes"
-      ],
-      "priority": 6,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-026",
-      "title": "Create Credit Card Payment Expense Type",
-      "description": "As a user, I want to easily add my monthly credit card payments so I can track when each card is due.",
-      "acceptanceCriteria": [
-        "When category is 'Credit Card', show card selector",
-        "Selected card links the expense to that credit card",
-        "Due day auto-fills from card's due day",
-        "Name auto-fills with card name (editable)",
-        "Typecheck passes"
-      ],
-      "priority": 7,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-027",
-      "title": "Enhanced Clone Behavior for Credit Cards",
-      "description": "As a user, I want credit card expenses to clone with $0 when I clone from previous month so I'm forced to enter the actual statement amount.",
-      "acceptanceCriteria": [
-        "When cloning, expenses with category 'Credit Card' have amount set to 0",
-        "Other expense types clone with their previous amount",
-        "User can still edit all amounts before confirming clone",
-        "Typecheck passes"
-      ],
-      "priority": 8,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-028",
-      "title": "User Settings Page",
-      "description": "As a user, I want to configure my exchange rate so USD expenses show accurate ARS equivalents.",
-      "acceptanceCriteria": [
-        "Settings page accessible from header menu",
-        "Can set USD to ARS exchange rate",
-        "Rate used to calculate ARS equivalent for USD expenses",
-        "Default rate is 1200 (configurable)",
-        "Typecheck passes"
-      ],
-      "priority": 9,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-030",
-      "title": "Separate Currency Display on Dashboard",
-      "description": "As a user, I want to see ARS expenses totaled in ARS and USD expenses totaled in USD separately, without converting to a single currency.",
-      "acceptanceCriteria": [
-        "Dashboard shows two separate sections: ARS expenses and USD expenses",
-        "ARS section shows only ARS expenses with totals in ARS",
-        "USD section shows only USD expenses with totals in USD",
-        "No ARS equivalent shown for USD expenses (remove conversion display)",
-        "Each section shows its own paid/unpaid/total breakdown",
-        "Empty currency sections are hidden",
-        "Remove exchange rate display from dashboard (keep in settings for future use)",
-        "Typecheck passes"
-      ],
-      "priority": 10,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-029",
-      "title": "Database Migration for New Schema",
-      "description": "As a developer, I want to migrate the database to support new models so the app can handle institutions, accounts, cards, and enhanced expenses.",
-      "acceptanceCriteria": [
-        "New Prisma schema with all new models: Institution, Account, CreditCard, ExpenseTag, UserSettings",
-        "Add new fields to Expense: category, currency, paymentMethod, paymentSourceId, paidWithCardId, linkedCreditCardId, isActive",
-        "Migration runs successfully",
-        "Existing users' expenses preserved",
-        "Existing expenses get default values (category=OTHER, currency=ARS)",
+        "See pre-populated assets (30 common assets: 10 crypto, 10 ETFs, 10 stocks)",
+        "Search assets by symbol or name",
+        "Filter assets by type (crypto, stock, etf)",
+        "See asset details (name, type, precision)",
+        "Active assets shown, inactive hidden",
         "Typecheck passes"
       ],
       "priority": 0,
+      "passes": false,
+      "notes": "Foundation - must be completed first as other features depend on asset library"
+    },
+    {
+      "id": "US-INV-002",
+      "title": "Add Investment",
+      "description": "As a user, I want to record a new investment purchase so I can track my portfolio holdings.",
+      "acceptanceCriteria": [
+        "Can select asset from library or search",
+        "Can enter quantity (supports 6 decimal places for crypto, 2 for stocks)",
+        "Can enter purchase price",
+        "Can select purchase currency from supported currencies",
+        "Can select purchase date (defaults to today)",
+        "Can select platform/brokerage",
+        "Can add optional notes",
+        "See calculated total cost before saving",
+        "Receive success confirmation with investment details",
+        "Receive validation errors for invalid input",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Core MVP feature"
+    },
+    {
+      "id": "US-INV-003",
+      "title": "Delete Investment",
+      "description": "As a user, I want to remove an investment from my portfolio so I can clean up sold or incorrect entries.",
+      "acceptanceCriteria": [
+        "Delete action available for each investment lot",
+        "Confirmation dialog before deletion",
+        "Warning shown if investment has associated dividends",
+        "Associated dividends deleted with investment",
+        "Portfolio updates immediately after deletion",
+        "Cannot delete other users' investments",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-INV-004",
+      "title": "List Investments",
+      "description": "As a user, I want to view all my investments so I can see my complete portfolio.",
+      "acceptanceCriteria": [
+        "See all investments sorted by creation date",
+        "Can filter by symbol, asset type, platform",
+        "Each investment shows key details (symbol, quantity, price, date)",
+        "Empty state shown for new users with call-to-action",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-INV-005",
+      "title": "Lot Tracking",
+      "description": "As a user, I want to record multiple purchases of the same asset so I can track my cost basis across different buy points.",
+      "acceptanceCriteria": [
+        "Can add multiple purchases of same symbol",
+        "Holdings view aggregates lots by symbol",
+        "Weighted average purchase price calculated correctly",
+        "Can expand holding to see individual lots",
+        "Lot count badge shown when multiple lots exist",
+        "Each lot can be edited/deleted independently",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-INV-006",
+      "title": "Fetch Asset Prices",
+      "description": "As a user, I want to see current market prices for my investments so I can know the real-time value of my portfolio.",
+      "acceptanceCriteria": [
+        "Crypto prices fetched from primary API (Binance)",
+        "Stock/ETF prices fetched from primary API (Yahoo Finance)",
+        "24-hour change percentage displayed",
+        "Last updated timestamp shown",
+        "Data source indicator shown (e.g., 'via Binance')",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "Core MVP feature"
+    },
+    {
+      "id": "US-INV-007",
+      "title": "Price Caching",
+      "description": "As a system, I want to cache price data so I can reduce API calls and improve performance.",
+      "acceptanceCriteria": [
+        "Prices cached for 5 minutes",
+        "Cache key based on symbol",
+        "Stale cache served on API failure (graceful degradation)",
+        "Manual refresh clears cache",
+        "Cache stats available for monitoring",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-INV-008",
+      "title": "Portfolio Dashboard",
+      "description": "As a user, I want to see my portfolio overview at a glance so I can quickly understand my investment status.",
+      "acceptanceCriteria": [
+        "See total portfolio value",
+        "See total cost basis",
+        "See total gain/loss (amount and percentage)",
+        "See asset allocation (crypto % vs stocks %)",
+        "Metrics update when prices refresh",
+        "Values shown in display currency",
+        "Gain/loss color-coded (green positive, red negative)",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": "Core MVP feature"
+    },
+    {
+      "id": "US-INV-009",
+      "title": "Holdings View",
+      "description": "As a user, I want to see my holdings in an organized list so I can review each position's performance.",
+      "acceptanceCriteria": [
+        "Holdings grouped by symbol",
+        "Each holding shows: quantity, avg price, current price, value, gain/loss %, 24h change",
+        "Asset type indicated (icon/badge for crypto vs stock)",
+        "Platform displayed for each lot",
+        "Expandable to show individual lots",
+        "Desktop shows table view, mobile shows card view",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": "Core MVP feature"
+    },
+    {
+      "id": "US-INV-010",
+      "title": "Edit Investment",
+      "description": "As a user, I want to modify an existing investment entry so I can correct mistakes without deleting and recreating.",
+      "acceptanceCriteria": [
+        "Can edit quantity, purchase price, date, platform, currency, notes",
+        "Cannot edit symbol or asset type (must delete and recreate)",
+        "Edit form pre-populates with current values",
+        "Validation rules same as creation",
+        "Portfolio metrics update after save",
+        "Can cancel edit without saving changes",
+        "Typecheck passes"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-INV-011",
+      "title": "Fallback Price Sources",
+      "description": "As a system, I want to use backup price APIs when primary fails so users always see price data.",
+      "acceptanceCriteria": [
+        "CoinGecko as fallback for crypto prices",
+        "Alpha Vantage as fallback for stock prices",
+        "Automatic failover on primary API failure",
+        "Fallback source indicated to user when used",
+        "Errors logged for monitoring",
+        "Typecheck passes"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-INV-012",
+      "title": "Manual Price Refresh",
+      "description": "As a user, I want to manually refresh prices so I can see the latest values on demand.",
+      "acceptanceCriteria": [
+        "Refresh button in header",
+        "Loading indicator during refresh",
+        "Last updated timestamp updates after refresh",
+        "Success/error feedback shown",
+        "Typecheck passes"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-INV-013",
+      "title": "Tab Navigation",
+      "description": "As a user, I want to navigate between different investment views so I can access holdings, history, and dividends.",
+      "acceptanceCriteria": [
+        "Tab bar with: Holdings, History, Dividends",
+        "Holdings tab is default",
+        "Active tab clearly indicated",
+        "Tab state preserved during session",
+        "Responsive on mobile",
+        "Typecheck passes"
+      ],
+      "priority": 12,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-INV-014",
+      "title": "Create Custom Asset",
+      "description": "As a user, I want to add custom assets not in the library so I can track private or regional investments.",
+      "acceptanceCriteria": [
+        "Can create custom asset with symbol, name, type",
+        "Can set quantity precision",
+        "Custom assets appear only in user's library",
+        "Custom assets support manual price entry",
+        "Cannot create duplicate symbols",
+        "Typecheck passes"
+      ],
+      "priority": 13,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-INV-015",
+      "title": "Manual Price Entry",
+      "description": "As a user, I want to manually enter prices for custom assets so I can track assets without automated pricing.",
+      "acceptanceCriteria": [
+        "Can enter current price for custom assets",
+        "Manual price used in portfolio calculations",
+        "Clear indicator that price is manually entered",
+        "Can update manual price anytime",
+        "Typecheck passes"
+      ],
+      "priority": 14,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-INV-016",
+      "title": "Daily Portfolio Snapshots",
+      "description": "As a system, I want to capture daily portfolio snapshots so users can view historical performance.",
+      "acceptanceCriteria": [
+        "Snapshot captured once per day (end of day)",
+        "Snapshot includes: total value, cost basis, crypto value, stock value",
+        "Individual holding values stored in JSON field",
+        "Data retained for 2 years minimum",
+        "Typecheck passes"
+      ],
+      "priority": 15,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-INV-017",
+      "title": "Manual Snapshot",
+      "description": "As a user, I want to manually trigger a snapshot so I can capture current state on demand.",
+      "acceptanceCriteria": [
+        "Button to create snapshot in history tab",
+        "Confirmation of snapshot creation",
+        "New snapshot appears in history",
+        "Typecheck passes"
+      ],
+      "priority": 16,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-INV-018",
+      "title": "Performance Chart",
+      "description": "As a user, I want to see a chart of my portfolio value over time so I can visualize performance trends.",
+      "acceptanceCriteria": [
+        "Line chart showing portfolio value over time",
+        "Time range selector: 1W, 1M, 3M, 6M, 1Y, All",
+        "Hover/tap shows specific date values",
+        "Period return displayed (amount and %)",
+        "Start and end values shown",
+        "Chart is responsive on mobile",
+        "Typecheck passes"
+      ],
+      "priority": 17,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-INV-019",
+      "title": "Chart Overlays",
+      "description": "As a user, I want to overlay cost basis and benchmarks on my chart so I can compare performance.",
+      "acceptanceCriteria": [
+        "Toggle to show/hide cost basis line",
+        "Toggle to show/hide S&P 500 benchmark",
+        "Different colors for each line",
+        "Legend explaining lines",
+        "Typecheck passes"
+      ],
+      "priority": 18,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-INV-020",
+      "title": "Record Dividend",
+      "description": "As a user, I want to record dividend payments I receive so I can track my income from investments.",
+      "acceptanceCriteria": [
+        "Can select holding/symbol for dividend",
+        "Can enter amount received",
+        "Can select currency",
+        "Can select payment date",
+        "Can select dividend type (regular, special, capital gain)",
+        "Can mark if reinvested (yes/no)",
+        "Can add optional notes",
+        "Typecheck passes"
+      ],
+      "priority": 19,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-INV-021",
+      "title": "View Dividend History",
+      "description": "As a user, I want to view my dividend history so I can track income over time.",
+      "acceptanceCriteria": [
+        "List all dividends chronologically",
+        "Filter by symbol",
+        "Filter by date range",
+        "Filter by dividend type",
+        "Show dividend details (amount, date, type, reinvested)",
+        "Typecheck passes"
+      ],
+      "priority": 20,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-INV-022",
+      "title": "Dividend Summary",
+      "description": "As a user, I want to see dividend summary metrics so I can understand my total dividend income.",
+      "acceptanceCriteria": [
+        "YTD total dividends displayed",
+        "This month dividends displayed",
+        "Last year dividends displayed",
+        "Breakdown by type (regular, special, capital gain)",
+        "Typecheck passes"
+      ],
+      "priority": 21,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-INV-023",
+      "title": "Dividend Yield",
+      "description": "As a user, I want to see dividend yield per holding so I can evaluate income-generating investments.",
+      "acceptanceCriteria": [
+        "Yield percentage shown on applicable holdings",
+        "Yield calculated as (Annual Dividends / Current Value) × 100",
+        "Only shown for holdings with dividends",
+        "Typecheck passes"
+      ],
+      "priority": 22,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-INV-024",
+      "title": "Delete Dividend",
+      "description": "As a user, I want to delete a dividend record so I can remove incorrect entries.",
+      "acceptanceCriteria": [
+        "Delete action on each dividend",
+        "Confirmation before delete",
+        "Summary recalculates after delete",
+        "Typecheck passes"
+      ],
+      "priority": 23,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-INV-025",
+      "title": "User Currency Settings",
+      "description": "As a user, I want to set my preferred display currency so I can see portfolio values in my local currency.",
+      "acceptanceCriteria": [
+        "Can set display currency in settings",
+        "Can manage preferred currencies list",
+        "Settings persist across sessions",
+        "Default is USD",
+        "Typecheck passes"
+      ],
+      "priority": 24,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-INV-026",
+      "title": "Investment-Level Currency",
+      "description": "As a user, I want to record investments in different currencies so I can accurately track purchases made abroad.",
+      "acceptanceCriteria": [
+        "Each investment has purchase currency field",
+        "Currency selector when adding/editing investment",
+        "Original currency values preserved",
+        "Can view in original or display currency",
+        "Typecheck passes"
+      ],
+      "priority": 25,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-INV-027",
+      "title": "Exchange Rate Fetching",
+      "description": "As a system, I want to fetch current exchange rates so currency conversions are accurate.",
+      "acceptanceCriteria": [
+        "Fetch rates from reliable API",
+        "Support 10 major currencies (USD, EUR, GBP, JPY, CAD, AUD, CHF, CNY, ARS, BRL)",
+        "Cache rates for 1 hour",
+        "Fallback to secondary API on failure",
+        "Typecheck passes"
+      ],
+      "priority": 26,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-INV-028",
+      "title": "Currency Conversion in Calculations",
+      "description": "As a system, I want to convert all values to display currency so users see consistent portfolio values.",
+      "acceptanceCriteria": [
+        "Portfolio total shown in display currency",
+        "Each holding value converted to display currency",
+        "Cost basis uses historical exchange rates",
+        "Gain/loss calculated after conversion",
+        "Typecheck passes"
+      ],
+      "priority": 27,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-INV-029",
+      "title": "Currency Selector in Portfolio View",
+      "description": "As a user, I want to quickly switch display currency so I can view my portfolio in different currencies.",
+      "acceptanceCriteria": [
+        "Currency dropdown in portfolio header",
+        "Portfolio recalculates on currency change",
+        "Selection persists in user settings",
+        "Loading state during recalculation",
+        "Typecheck passes"
+      ],
+      "priority": 28,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-INV-030",
+      "title": "Dashboard Dividend Metric",
+      "description": "As a user, I want to see total dividends on the portfolio dashboard so I can see my income at a glance.",
+      "acceptanceCriteria": [
+        "Dividend total metric card on dashboard",
+        "Shows YTD dividend income",
+        "Displayed alongside other portfolio metrics",
+        "Updates when dividends are added/removed",
+        "Typecheck passes"
+      ],
+      "priority": 29,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-INV-031",
+      "title": "Investments Page Navigation",
+      "description": "As a user, I want to access the investments page from the main app so I can easily navigate to my portfolio.",
+      "acceptanceCriteria": [
+        "Investments link in main app header/navigation",
+        "Back button on investments page returns to main app",
+        "Responsive navigation on mobile",
+        "Typecheck passes"
+      ],
+      "priority": 30,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-INV-032",
+      "title": "Database Schema Setup",
+      "description": "As a developer, I want to set up the database schema for the investments module so all features have proper data storage.",
+      "acceptanceCriteria": [
+        "Investment model with all required fields",
+        "Asset model for asset library",
+        "Dividend model for dividend tracking",
+        "PortfolioSnapshot model for historical data",
+        "UserSettings model for currency preferences",
+        "Proper indexes on userId and symbol fields",
+        "Migration runs successfully",
+        "Typecheck passes"
+      ],
+      "priority": -1,
       "passes": true,
-      "notes": "This should run first before other stories since it sets up the schema"
+      "notes": "Infrastructure - should be done first before any other stories"
     }
   ]
 }
