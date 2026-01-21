@@ -454,3 +454,20 @@ Started: Wed Jan 21 00:10:20 -03 2026
   - getExchangeRate helper converts between any two currencies using USD as intermediary
   - SUPPORTED_CURRENCIES exported from exchangeRateService.ts for type safety
 ---
+
+## 2026-01-21 - US-INV-028
+- What was implemented: Currency Conversion in Calculations - convert all portfolio values to display currency
+- Files changed:
+  - src/app/investments/actions.ts - Added getPortfolioExchangeRates action and CurrencyConversionRates type
+  - src/components/AssetLibrarySection.tsx - Added exchange rate fetching on display currency change
+  - src/components/PortfolioDashboard.tsx - Implemented currency conversion for total value, cost basis, gain/loss, allocation
+  - src/components/HoldingsView.tsx - Added converted value fields to Holding interface, display mode shows converted values
+- **Learnings for future iterations:**
+  - CurrencyConversionRates type uses "CURRENCY_DISPLAYCURRENCY" format for rate lookup (e.g., "EUR_USD" -> 1.10)
+  - Prices from APIs (Binance, Yahoo Finance) are always in USD - must convert from USD to display currency
+  - Cost basis conversion uses each lot's purchase currency for accurate multi-currency portfolio tracking
+  - Holding interface extended with totalCostConverted, currentValueConverted, gainLossConverted, weightedAvgPriceConverted
+  - Gain/loss percentage recalculated in display currency mode for accuracy
+  - Display mode vs original mode: display shows all values in user's preferred currency, original shows in purchase currencies
+  - ExchangeRateMap already exists in exchangeRateService.ts - use CurrencyConversionRates to avoid name conflict
+---
