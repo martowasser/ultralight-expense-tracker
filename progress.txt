@@ -389,3 +389,18 @@ Started: Wed Jan 21 00:10:20 -03 2026
   - Purple color (text-purple-700, bg-purple-50) used to distinguish yield from other metrics
   - Yields fetched after prices update since yield calculation depends on current prices
 ---
+
+## 2026-01-21 - US-INV-024
+- What was implemented: Delete Dividend feature - users can delete dividend records with confirmation
+- Files changed:
+  - src/app/investments/actions.ts - Added deleteDividend server action with ownership validation
+  - src/components/DeleteDividendModal.tsx - New confirmation modal displaying dividend details
+  - src/components/DividendsTab.tsx - Added delete buttons to table and card views, integrated modal
+- **Learnings for future iterations:**
+  - deleteDividend follows same pattern as deleteInvestment: verify ownership then delete
+  - Delete button uses trash icon, styled with hover effect (text-red, bg-red-50)
+  - Modal displays dividend details (symbol, amount, date, type, reinvested status) before confirming
+  - handleDeleteSuccess refetches both dividends list and summary to update UI
+  - Desktop table has Actions column, mobile card has delete button next to amount
+  - Re-using formatDividendType, formatAmount, formatDate helpers from DividendsTab
+---
