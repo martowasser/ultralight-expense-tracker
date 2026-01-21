@@ -1,4 +1,4 @@
-import { Currency } from "@/generated/prisma/enums";
+import { Currency, DividendType } from "@/generated/prisma/enums";
 
 // Common platforms for dropdown
 export const PLATFORMS = [
@@ -27,4 +27,11 @@ export const CURRENCIES: Currency[] = [
   "CNY",
   "ARS",
   "BRL",
+];
+
+// Dividend types for dropdown
+export const DIVIDEND_TYPES: { value: DividendType; label: string }[] = [
+  { value: "REGULAR", label: "Regular" },
+  { value: "SPECIAL", label: "Special" },
+  { value: "CAPITAL_GAIN", label: "Capital Gain" },
 ];

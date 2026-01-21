@@ -9,6 +9,7 @@ import CreateCustomAssetModal from "./CreateCustomAssetModal";
 import HoldingsView from "./HoldingsView";
 import PortfolioDashboard from "./PortfolioDashboard";
 import HistoryTab from "./HistoryTab";
+import DividendsTab from "./DividendsTab";
 import { Asset, Investment, CachedPrice, getAssets, getInvestments, GetAssetsInput, fetchAssetPrices, clearPriceCache } from "@/app/investments/actions";
 import { AssetType } from "@/generated/prisma/enums";
 
@@ -427,15 +428,7 @@ export default function AssetLibrarySection({
       )}
 
       {activeTab === "dividends" && (
-        <div className="py-12 text-center">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[#f5f5f5] mb-4">
-            <svg className="w-6 h-6 text-[#a3a3a3]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <p className="text-sm text-[#737373] mb-1">dividends</p>
-          <p className="text-xs text-[#a3a3a3]">dividend records and income tracking will appear here</p>
-        </div>
+        <DividendsTab investments={investments} onRefresh={handleRefresh} />
       )}
 
       {/* Add Investment Modal */}

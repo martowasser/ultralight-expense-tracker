@@ -2,7 +2,7 @@
 
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { AssetType, Currency } from "@/generated/prisma/enums";
+import { AssetType, Currency, DividendType } from "@/generated/prisma/enums";
 import { fetchPrices as fetchPricesFromAPIs, PriceData } from "@/lib/priceService";
 
 // ==========================================
@@ -2013,5 +2013,158 @@ export async function getPriceCacheStats(): Promise<GetCacheStatsResult> {
   } catch (error) {
     console.error("Error getting cache stats:", error);
     return { success: false, error: "Failed to get cache stats" };
+  }
+}
+
+// ==========================================
+// Dividend Types
+// ==========================================
+
+export interface Dividend {
+  id: string;
+  userId: string;
+  investmentId: string;
+  amount: string;
+  currency: Currency;
+  paymentDate: Date;
+  type: DividendType;
+  isReinvested: boolean;
+  notes: string | null;
+  createdAt: Date;
+  investment: Investment;
+}
+
+export interface CreateDividendInput {
+  investmentId: string;
+  amount: string;
+  currency: Currency;
+  paymentDate: string;
+  type: DividendType;
+  isReinvested: boolean;
+  notes?: string;
+}
+
+export interface CreateDividendResult {
+  success: boolean;
+  error?: string;
+  dividend?: Dividend;
+}
+
+// ==========================================
+// Dividend Actions
+// ==========================================
+
+/**
+ * Create a new dividend record
+ */
+export async function createDividend(input: CreateDividendInput): Promise<CreateDividendResult> {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  const { investmentId, amount, currency, paymentDate, type, isReinvested, notes } = input;
+
+  // Validate required fields
+  if (!investmentId) {
+    return { success: false, error: "Investment/holding is required" };
+  }
+
+  if (!amount || amount.trim() === "") {
+    return { success: false, error: "Amount is required" };
+  }
+
+  const amountNum = parseFloat(amount);
+  if (isNaN(amountNum) || amountNum <= 0) {
+    return { success: false, error: "Amount must be a positive number" };
+  }
+
+  if (!paymentDate) {
+    return { success: false, error: "Payment date is required" };
+  }
+
+  if (!type) {
+    return { success: false, error: "Dividend type is required" };
+  }
+
+  if (!["REGULAR", "SPECIAL", "CAPITAL_GAIN"].includes(type)) {
+    return { success: false, error: "Invalid dividend type" };
+  }
+
+  try {
+    // Verify investment exists and belongs to the user
+    const investment = await prisma.investment.findFirst({
+      where: {
+        id: investmentId,
+        userId: session.user.id,
+      },
+      include: { asset: true },
+    });
+
+    if (!investment) {
+      return { success: false, error: "Investment not found" };
+    }
+
+    // Create the dividend
+    const dividend = await prisma.dividend.create({
+      data: {
+        userId: session.user.id,
+        investmentId,
+        amount: amountNum,
+        currency,
+        paymentDate: new Date(paymentDate),
+        type,
+        isReinvested,
+        notes: notes?.trim() || null,
+      },
+      include: {
+        investment: {
+          include: { asset: true },
+        },
+      },
+    });
+
+    return {
+      success: true,
+      dividend: {
+        id: dividend.id,
+        userId: dividend.userId,
+        investmentId: dividend.investmentId,
+        amount: dividend.amount.toString(),
+        currency: dividend.currency,
+        paymentDate: dividend.paymentDate,
+        type: dividend.type,
+        isReinvested: dividend.isReinvested,
+        notes: dividend.notes,
+        createdAt: dividend.createdAt,
+        investment: {
+          id: dividend.investment.id,
+          userId: dividend.investment.userId,
+          assetId: dividend.investment.assetId,
+          quantity: dividend.investment.quantity.toString(),
+          purchasePrice: dividend.investment.purchasePrice.toString(),
+          purchaseCurrency: dividend.investment.purchaseCurrency,
+          purchaseDate: dividend.investment.purchaseDate,
+          platform: dividend.investment.platform,
+          notes: dividend.investment.notes,
+          createdAt: dividend.investment.createdAt,
+          asset: {
+            id: dividend.investment.asset.id,
+            symbol: dividend.investment.asset.symbol,
+            name: dividend.investment.asset.name,
+            type: dividend.investment.asset.type,
+            precision: dividend.investment.asset.precision,
+            isActive: dividend.investment.asset.isActive,
+            isGlobal: dividend.investment.asset.isGlobal,
+            userId: dividend.investment.asset.userId,
+            createdAt: dividend.investment.asset.createdAt,
+          },
+        },
+      },
+    };
+  } catch (error) {
+    console.error("Error creating dividend:", error);
+    return { success: false, error: "Failed to create dividend" };
   }
 }
