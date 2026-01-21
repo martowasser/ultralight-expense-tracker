@@ -420,3 +420,21 @@ Started: Wed Jan 21 00:10:20 -03 2026
   - onSettingsChange callback pattern allows parent to react to settings updates
   - Preferred currencies shown as toggleable buttons in a grid layout
 ---
+
+## 2026-01-21 - US-INV-026
+- What was implemented: Investment-Level Currency feature - toggle to view holdings in original or display currency
+- Files changed:
+  - src/app/investments/constants.ts - Added shared CURRENCY_INFO export with currency symbols and names
+  - src/components/UserCurrencySettings.tsx - Refactored to use shared CURRENCY_INFO from constants
+  - src/components/HoldingsView.tsx - Added currencyMode toggle, mixed currency badges, currency-aware display
+  - src/components/AssetLibrarySection.tsx - Passed displayCurrency prop to HoldingsView
+- **Learnings for future iterations:**
+  - purchaseCurrency field already existed in Investment schema from initial setup
+  - Currency selector already existed in AddInvestmentModal and EditInvestmentModal
+  - HoldingsView uses currencyMode state ("original" | "display") to control currency display
+  - Holdings with lots in different currencies show "mixed" badge with amber styling
+  - Holding interface extended with primaryCurrency and hasMixedCurrencies fields
+  - getCurrencySymbol helper function uses CURRENCY_INFO for currency symbol lookup
+  - Display mode shows the user's display currency symbol on prices/values (actual conversion will be in US-INV-028)
+  - Original mode shows each holding's primary purchase currency
+---
