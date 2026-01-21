@@ -61,3 +61,19 @@ Started: Wed Jan 21 00:10:20 -03 2026
   - Common platforms provided in dropdown with "Other" option for custom entry
   - All 10 currencies are supported for investment purchases
 ---
+
+## 2026-01-21 - US-INV-003
+- What was implemented: Delete Investment feature
+- Files changed:
+  - src/app/investments/actions.ts - Added getInvestments, checkInvestmentForDeletion, deleteInvestment actions
+  - src/app/investments/page.tsx - Fetches investments and passes to AssetLibrarySection
+  - src/components/AssetLibrarySection.tsx - Added investments state and InvestmentsList integration
+  - src/components/DeleteInvestmentModal.tsx - Confirmation modal with dividend warning
+  - src/components/InvestmentsList.tsx - Displays user's investments with delete buttons
+- **Learnings for future iterations:**
+  - Dividends have onDelete: Cascade in schema, so deleting investment auto-deletes dividends
+  - checkInvestmentForDeletion action returns hasDividends and dividendCount for warning display
+  - InvestmentsList shows each investment lot with asset details, quantity, price, platform, date
+  - Delete button triggers modal with confirmation and dividend count warning if applicable
+  - Server action enforces userId check to prevent deleting other users' investments
+---
