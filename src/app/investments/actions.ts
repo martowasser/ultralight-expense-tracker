@@ -2054,6 +2054,132 @@ export interface CreateDividendResult {
 // Dividend Actions
 // ==========================================
 
+// ==========================================
+// Get Dividends Types
+// ==========================================
+
+export interface GetDividendsInput {
+  symbol?: string;
+  startDate?: string;
+  endDate?: string;
+  type?: DividendType;
+  limit?: number;
+}
+
+export interface GetDividendsResult {
+  success: boolean;
+  error?: string;
+  dividends?: Dividend[];
+}
+
+// ==========================================
+// Get Dividends Action
+// ==========================================
+
+/**
+ * Get all dividends for the current user with optional filters
+ * Supports filtering by symbol, date range, and dividend type
+ */
+export async function getDividends(input?: GetDividendsInput): Promise<GetDividendsResult> {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  try {
+    const { symbol, startDate, endDate, type, limit = 100 } = input || {};
+
+    // Build where clause
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const where: any = { userId: session.user.id };
+
+    // Symbol filter - need to join through investment to asset
+    if (symbol && symbol.trim() !== "") {
+      where.investment = {
+        asset: {
+          symbol: {
+            contains: symbol.trim(),
+            mode: "insensitive",
+          },
+        },
+      };
+    }
+
+    // Date range filter
+    if (startDate || endDate) {
+      where.paymentDate = {};
+      if (startDate) {
+        where.paymentDate.gte = new Date(startDate);
+      }
+      if (endDate) {
+        // Add one day to include the end date fully
+        const endDateObj = new Date(endDate);
+        endDateObj.setDate(endDateObj.getDate() + 1);
+        where.paymentDate.lt = endDateObj;
+      }
+    }
+
+    // Type filter
+    if (type) {
+      where.type = type;
+    }
+
+    const dividends = await prisma.dividend.findMany({
+      where,
+      include: {
+        investment: {
+          include: { asset: true },
+        },
+      },
+      orderBy: { paymentDate: "desc" },
+      take: Math.min(limit, 1000), // Cap at 1000 for safety
+    });
+
+    return {
+      success: true,
+      dividends: dividends.map((div) => ({
+        id: div.id,
+        userId: div.userId,
+        investmentId: div.investmentId,
+        amount: div.amount.toString(),
+        currency: div.currency,
+        paymentDate: div.paymentDate,
+        type: div.type,
+        isReinvested: div.isReinvested,
+        notes: div.notes,
+        createdAt: div.createdAt,
+        investment: {
+          id: div.investment.id,
+          userId: div.investment.userId,
+          assetId: div.investment.assetId,
+          quantity: div.investment.quantity.toString(),
+          purchasePrice: div.investment.purchasePrice.toString(),
+          purchaseCurrency: div.investment.purchaseCurrency,
+          purchaseDate: div.investment.purchaseDate,
+          platform: div.investment.platform,
+          notes: div.investment.notes,
+          createdAt: div.investment.createdAt,
+          asset: {
+            id: div.investment.asset.id,
+            symbol: div.investment.asset.symbol,
+            name: div.investment.asset.name,
+            type: div.investment.asset.type,
+            precision: div.investment.asset.precision,
+            isActive: div.investment.asset.isActive,
+            isGlobal: div.investment.asset.isGlobal,
+            userId: div.investment.asset.userId,
+            createdAt: div.investment.asset.createdAt,
+          },
+        },
+      })),
+    };
+  } catch (error) {
+    console.error("Error fetching dividends:", error);
+    return { success: false, error: "Failed to fetch dividends" };
+  }
+}
+
 /**
  * Create a new dividend record
  */
