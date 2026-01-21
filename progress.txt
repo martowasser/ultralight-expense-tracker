@@ -230,3 +230,19 @@ Started: Wed Jan 21 00:10:20 -03 2026
   - History and Dividends tabs show placeholder content (future stories US-INV-016-018 and US-INV-020-024)
   - Tab state is preserved during session (React state persists until page refresh)
 ---
+
+## 2026-01-21 - US-INV-014
+- What was implemented: Create Custom Asset feature - users can create private assets not in the library
+- Files changed:
+  - src/app/investments/actions.ts - Added createCustomAsset server action with validation
+  - src/components/CreateCustomAssetModal.tsx - New modal for creating custom assets
+  - src/components/AssetLibrarySection.tsx - Integrated modal with "+ create custom asset" button
+- **Learnings for future iterations:**
+  - Custom assets have isGlobal: false and userId set to the creating user's ID
+  - Symbol validation: alphanumeric only, 1-10 characters, normalized to uppercase
+  - Symbol uniqueness checked against both global assets and user's custom assets
+  - Type-based default precision: 6 for CRYPTO, 2 for STOCK/ETF
+  - Precision options available: 0, 2, 4, 6, 8 decimal places
+  - Custom assets support manual price entry (no automated price fetching)
+  - Modal placed next to "asset library" label for discoverability
+---
