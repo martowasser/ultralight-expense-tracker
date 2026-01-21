@@ -404,3 +404,19 @@ Started: Wed Jan 21 00:10:20 -03 2026
   - Desktop table has Actions column, mobile card has delete button next to amount
   - Re-using formatDividendType, formatAmount, formatDate helpers from DividendsTab
 ---
+
+## 2026-01-21 - US-INV-025
+- What was implemented: User Currency Settings feature - set and manage display currency and preferred currencies
+- Files changed:
+  - src/app/investments/actions.ts - Added UserSettings types and actions (getUserSettings, updateDisplayCurrency, updatePreferredCurrencies)
+  - src/components/UserCurrencySettings.tsx - New settings panel component with currency selection
+  - src/components/AssetLibrarySection.tsx - Integrated settings component, added displayCurrency state
+- **Learnings for future iterations:**
+  - UserSettings already existed in schema with displayCurrency and preferredCurrencies fields
+  - getUserSettings creates default settings if none exist (upsert pattern)
+  - Settings panel uses dropdown overlay pattern with backdrop click-to-close
+  - CURRENCY_INFO object maps currency codes to names and symbols for display
+  - Settings persist via database - user's displayCurrency is fetched on mount
+  - onSettingsChange callback pattern allows parent to react to settings updates
+  - Preferred currencies shown as toggleable buttons in a grid layout
+---
