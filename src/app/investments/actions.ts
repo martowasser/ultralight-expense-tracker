@@ -3136,3 +3136,81 @@ export async function getExchangeRate(
     return { success: false, error: "Failed to get exchange rate" };
   }
 }
+
+// ==========================================
+// Portfolio Currency Conversion Types
+// ==========================================
+
+export interface CurrencyConversionRates {
+  [currencyPair: string]: number; // e.g., "EUR_USD" -> 1.10
+}
+
+export interface GetPortfolioExchangeRatesResult {
+  success: boolean;
+  error?: string;
+  rates?: CurrencyConversionRates;
+  displayCurrency?: string;
+}
+
+// ==========================================
+// Portfolio Currency Conversion Actions
+// ==========================================
+
+/**
+ * Get exchange rates needed for portfolio calculations
+ * Returns a map of currency pairs to rates for converting to display currency
+ * E.g., { "EUR_USD": 1.10, "GBP_USD": 1.27 } when display currency is USD
+ */
+export async function getPortfolioExchangeRates(
+  displayCurrency: string
+): Promise<GetPortfolioExchangeRatesResult> {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  try {
+    // Fetch exchange rates with USD as base (most efficient since most prices are in USD)
+    const result = await fetchExchangeRates("USD");
+
+    if (!result.success || !result.rates) {
+      return { success: false, error: result.error || "Failed to fetch exchange rates" };
+    }
+
+    // Build a map of rates from the cached rates
+    const usdRates: Record<string, number> = { USD: 1 };
+    for (const rate of result.rates) {
+      usdRates[rate.targetCurrency] = parseFloat(rate.rate);
+    }
+
+    // Build exchange rate map for all supported currency pairs to display currency
+    const exchangeRateMap: CurrencyConversionRates = {};
+
+    // Get the display currency rate relative to USD
+    const displayRate = displayCurrency === "USD" ? 1 : usdRates[displayCurrency];
+    if (displayRate === undefined) {
+      return { success: false, error: `Exchange rate not available for ${displayCurrency}` };
+    }
+
+    // For each supported currency, calculate the rate to display currency
+    for (const [currency, usdRate] of Object.entries(usdRates)) {
+      // Rate from currency to display currency = displayRate / currencyRate
+      // e.g., EUR to USD: USD rate / EUR rate = 1 / 0.92 = 1.087
+      if (currency === displayCurrency) {
+        exchangeRateMap[`${currency}_${displayCurrency}`] = 1;
+      } else {
+        exchangeRateMap[`${currency}_${displayCurrency}`] = displayRate / usdRate;
+      }
+    }
+
+    return {
+      success: true,
+      rates: exchangeRateMap,
+      displayCurrency,
+    };
+  } catch (error) {
+    console.error("Error getting portfolio exchange rates:", error);
+    return { success: false, error: "Failed to get exchange rates" };
+  }
+}

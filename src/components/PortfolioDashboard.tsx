@@ -1,13 +1,15 @@
 "use client";
 
 import { useMemo } from "react";
-import { Investment, CachedPrice } from "@/app/investments/actions";
-import { AssetType } from "@/generated/prisma/enums";
+import { Investment, CachedPrice, CurrencyConversionRates } from "@/app/investments/actions";
+import { AssetType, Currency } from "@/generated/prisma/enums";
+import { CURRENCY_INFO } from "@/app/investments/constants";
 
 interface PortfolioDashboardProps {
   investments: Investment[];
   prices: CachedPrice[];
-  displayCurrency?: string;
+  displayCurrency?: Currency;
+  exchangeRates?: CurrencyConversionRates;
 }
 
 interface PortfolioMetrics {
@@ -28,7 +30,27 @@ export default function PortfolioDashboard({
   investments,
   prices,
   displayCurrency = "USD",
+  exchangeRates = {},
 }: PortfolioDashboardProps) {
+  // Get currency symbol for display
+  const getCurrencySymbol = (currency: Currency): string => {
+    return CURRENCY_INFO[currency]?.symbol || currency;
+  };
+
+  // Helper function to convert amount from one currency to display currency
+  const convertToDisplayCurrency = (amount: number, fromCurrency: string): number => {
+    if (fromCurrency === displayCurrency) {
+      return amount;
+    }
+    const rateKey = `${fromCurrency}_${displayCurrency}`;
+    const rate = exchangeRates[rateKey];
+    if (rate === undefined) {
+      // Fallback: assume same currency if rate not available
+      return amount;
+    }
+    return amount * rate;
+  };
+
   // Create a price map for quick lookup
   const priceMap = useMemo(() => {
     const map = new Map<string, number>();
@@ -38,7 +60,7 @@ export default function PortfolioDashboard({
     return map;
   }, [prices]);
 
-  // Calculate portfolio metrics
+  // Calculate portfolio metrics with currency conversion
   const metrics: PortfolioMetrics = useMemo(() => {
     if (investments.length === 0) {
       return {
@@ -65,30 +87,37 @@ export default function PortfolioDashboard({
     investments.forEach((investment) => {
       const quantity = parseFloat(investment.quantity);
       const purchasePrice = parseFloat(investment.purchasePrice);
-      const costBasis = quantity * purchasePrice;
-      totalCostBasis += costBasis;
+      const purchaseCurrency = investment.purchaseCurrency;
 
-      // Get current price from price map
+      // Cost basis in original currency, then convert to display currency
+      const costBasisInOriginal = quantity * purchasePrice;
+      const costBasisConverted = convertToDisplayCurrency(costBasisInOriginal, purchaseCurrency);
+      totalCostBasis += costBasisConverted;
+
+      // Get current price from price map (prices are in USD from APIs)
       const currentPrice = priceMap.get(investment.asset.symbol);
       if (currentPrice !== undefined) {
-        const currentValue = quantity * currentPrice;
-        totalValue += currentValue;
+        // Current value: prices from APIs are in USD, convert to display currency
+        const currentValueInUSD = quantity * currentPrice;
+        const currentValueConverted = convertToDisplayCurrency(currentValueInUSD, "USD");
+        totalValue += currentValueConverted;
 
         // Categorize by asset type
         switch (investment.asset.type) {
           case AssetType.CRYPTO:
-            cryptoValue += currentValue;
+            cryptoValue += currentValueConverted;
             break;
           case AssetType.STOCK:
-            stockValue += currentValue;
+            stockValue += currentValueConverted;
             break;
           case AssetType.ETF:
-            etfValue += currentValue;
+            etfValue += currentValueConverted;
             break;
         }
       }
     });
 
+    // Gain/loss calculated after conversion (this gives accurate results)
     const totalGainLoss = totalValue - totalCostBasis;
     const totalGainLossPercent = totalCostBasis > 0 ? (totalGainLoss / totalCostBasis) * 100 : 0;
 
@@ -110,7 +139,9 @@ export default function PortfolioDashboard({
       etfPercent,
       hasData: totalValue > 0,
     };
-  }, [investments, priceMap]);
+  }, [investments, priceMap, displayCurrency, exchangeRates]);
+
+  const currencySymbol = getCurrencySymbol(displayCurrency);
 
   const formatCurrency = (value: number) => {
     return value.toLocaleString(undefined, {
@@ -138,7 +169,7 @@ export default function PortfolioDashboard({
         <div className="border border-[#e5e5e5] bg-white p-4">
           <p className="text-xs text-[#737373] mb-1">total value</p>
           <p className="text-lg font-medium text-[#171717]">
-            {displayCurrency} {formatCurrency(metrics.totalValue)}
+            {currencySymbol}{formatCurrency(metrics.totalValue)}
           </p>
         </div>
 
@@ -146,7 +177,7 @@ export default function PortfolioDashboard({
         <div className="border border-[#e5e5e5] bg-white p-4">
           <p className="text-xs text-[#737373] mb-1">cost basis</p>
           <p className="text-lg font-medium text-[#171717]">
-            {displayCurrency} {formatCurrency(metrics.totalCostBasis)}
+            {currencySymbol}{formatCurrency(metrics.totalCostBasis)}
           </p>
         </div>
 
@@ -160,7 +191,7 @@ export default function PortfolioDashboard({
               }`}
             >
               {metrics.totalGainLoss >= 0 ? "+" : ""}
-              {displayCurrency} {formatCurrency(Math.abs(metrics.totalGainLoss))}
+              {currencySymbol}{formatCurrency(Math.abs(metrics.totalGainLoss))}
             </p>
             <span
               className={`text-sm px-2 py-0.5 rounded ${
@@ -215,7 +246,7 @@ export default function PortfolioDashboard({
                   crypto: {formatPercent(metrics.cryptoPercent)}%
                 </span>
                 <span className="text-[#a3a3a3]">
-                  ({displayCurrency} {formatCurrency(metrics.cryptoValue)})
+                  ({currencySymbol}{formatCurrency(metrics.cryptoValue)})
                 </span>
               </div>
             )}
@@ -226,7 +257,7 @@ export default function PortfolioDashboard({
                   stocks: {formatPercent(metrics.stockPercent)}%
                 </span>
                 <span className="text-[#a3a3a3]">
-                  ({displayCurrency} {formatCurrency(metrics.stockValue)})
+                  ({currencySymbol}{formatCurrency(metrics.stockValue)})
                 </span>
               </div>
             )}
@@ -237,7 +268,7 @@ export default function PortfolioDashboard({
                   etfs: {formatPercent(metrics.etfPercent)}%
                 </span>
                 <span className="text-[#a3a3a3]">
-                  ({displayCurrency} {formatCurrency(metrics.etfValue)})
+                  ({currencySymbol}{formatCurrency(metrics.etfValue)})
                 </span>
               </div>
             )}

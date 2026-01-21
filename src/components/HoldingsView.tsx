@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Investment, CachedPrice, Asset, HoldingDividendYield } from "@/app/investments/actions";
+import { Investment, CachedPrice, Asset, HoldingDividendYield, CurrencyConversionRates } from "@/app/investments/actions";
 import { AssetType, Currency } from "@/generated/prisma/enums";
 import { CURRENCY_INFO } from "@/app/investments/constants";
 import DeleteInvestmentModal from "./DeleteInvestmentModal";
@@ -51,6 +51,7 @@ interface HoldingsViewProps {
   pricesLoading?: boolean;
   lastPriceUpdate?: Date | null;
   displayCurrency?: Currency;
+  exchangeRates?: CurrencyConversionRates;
   onRefresh: () => void;
   onRefreshPrices?: (forceRefresh?: boolean) => void;
   onAddInvestment?: () => void;
@@ -85,6 +86,11 @@ interface Holding {
   // Currency tracking
   primaryCurrency: Currency;  // The most common purchase currency among lots
   hasMixedCurrencies: boolean;  // True if lots have different currencies
+  // Converted values (for display currency mode)
+  totalCostConverted?: number;  // Total cost converted to display currency
+  currentValueConverted?: number;  // Current value converted to display currency
+  gainLossConverted?: number;  // Gain/loss in display currency
+  weightedAvgPriceConverted?: number;  // Avg price converted to display currency
 }
 
 export default function HoldingsView({
@@ -94,6 +100,7 @@ export default function HoldingsView({
   pricesLoading = false,
   lastPriceUpdate,
   displayCurrency = "USD",
+  exchangeRates = {},
   onRefresh,
   onRefreshPrices,
   onAddInvestment,
@@ -111,6 +118,20 @@ export default function HoldingsView({
   // Get currency symbol for display
   const getCurrencySymbol = (currency: Currency): string => {
     return CURRENCY_INFO[currency]?.symbol || currency;
+  };
+
+  // Helper function to convert amount from one currency to display currency
+  const convertToDisplayCurrency = (amount: number, fromCurrency: string): number => {
+    if (fromCurrency === displayCurrency) {
+      return amount;
+    }
+    const rateKey = `${fromCurrency}_${displayCurrency}`;
+    const rate = exchangeRates[rateKey];
+    if (rate === undefined) {
+      // Fallback: return original amount if rate not available
+      return amount;
+    }
+    return amount * rate;
   };
 
   const handleDeleteSuccess = () => {
@@ -294,15 +315,32 @@ export default function HoldingsView({
         });
       }
 
+      // Calculate converted cost basis (sum each lot's cost converted individually for accuracy)
+      let totalCostConverted = 0;
+      holding.lots.forEach((lot) => {
+        const lotQuantity = parseFloat(lot.quantity);
+        const lotPrice = parseFloat(lot.purchasePrice);
+        const lotCost = lotQuantity * lotPrice;
+        totalCostConverted += convertToDisplayCurrency(lotCost, lot.purchaseCurrency);
+      });
+      holding.totalCostConverted = totalCostConverted;
+      holding.weightedAvgPriceConverted = totalCostConverted / holding.totalQuantity;
+
       // Add price data if available
       const priceData = priceMap.get(holding.symbol);
       if (priceData) {
         holding.currentPrice = parseFloat(priceData.price);
         holding.change24h = priceData.change24h ? parseFloat(priceData.change24h) : null;
         holding.priceSource = priceData.source;
+        // Current value in USD (prices from API are in USD)
         holding.currentValue = holding.totalQuantity * holding.currentPrice;
+        // Convert current value to display currency
+        holding.currentValueConverted = convertToDisplayCurrency(holding.currentValue, "USD");
+        // Gain/loss in original currencies (mixed currencies may be inaccurate)
         holding.gainLoss = holding.currentValue - holding.totalCost;
         holding.gainLossPercent = (holding.gainLoss / holding.totalCost) * 100;
+        // Gain/loss in display currency (accurate after conversion)
+        holding.gainLossConverted = holding.currentValueConverted - holding.totalCostConverted;
       }
 
       // Add dividend yield if available (only for holdings with dividends)
@@ -320,7 +358,7 @@ export default function HoldingsView({
     return Array.from(holdingsMap.values()).sort((a, b) =>
       a.symbol.localeCompare(b.symbol)
     );
-  }, [filteredInvestments, priceMap, yieldMap]);
+  }, [filteredInvestments, priceMap, yieldMap, displayCurrency, exchangeRates]);
 
   // Empty state for new users (no investments at all)
   if (investments.length === 0) {
@@ -588,7 +626,7 @@ export default function HoldingsView({
                         </td>
                         <td className="px-4 py-3 text-right text-[#737373]">
                           <div>
-                            {showCurrencySymbol} {holding.weightedAvgPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {showCurrencySymbol}{(currencyMode === "display" ? (holding.weightedAvgPriceConverted ?? holding.weightedAvgPrice) : holding.weightedAvgPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             {holding.hasMixedCurrencies && currencyMode === "original" && (
                               <span className="block text-xs text-amber-600">mixed currencies</span>
                             )}
@@ -599,7 +637,7 @@ export default function HoldingsView({
                             <div>
                               <div className="flex items-center justify-end gap-1">
                                 <span className="text-[#171717]">
-                                  {currencyMode === "display" ? getCurrencySymbol(displayCurrency) : "$"}{formatPrice(holding.currentPrice)}
+                                  {currencyMode === "display" ? getCurrencySymbol(displayCurrency) : "$"}{formatPrice(currencyMode === "display" ? convertToDisplayCurrency(holding.currentPrice, "USD") : holding.currentPrice)}
                                 </span>
                                 {holding.isCustom && holding.priceSource === "manual" && (
                                   <button
@@ -646,18 +684,23 @@ export default function HoldingsView({
                         </td>
                         <td className="px-4 py-3 text-right text-[#171717] font-medium">
                           {holding.currentValue !== undefined
-                            ? `${currencyMode === "display" ? getCurrencySymbol(displayCurrency) : "$"}${holding.currentValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                            ? `${currencyMode === "display" ? getCurrencySymbol(displayCurrency) : "$"}${(currencyMode === "display" ? (holding.currentValueConverted ?? holding.currentValue) : holding.currentValue).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                             : "—"}
                         </td>
                         <td className="px-4 py-3 text-right">
-                          {holding.gainLoss !== undefined && holding.gainLossPercent !== undefined ? (
-                            <div className={holding.gainLoss >= 0 ? "text-green-700" : "text-red-700"}>
-                              <span>{holding.gainLoss >= 0 ? "+" : ""}{currencyMode === "display" ? getCurrencySymbol(displayCurrency) : "$"}{Math.abs(holding.gainLoss).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                              <span className="block text-xs">
-                                ({holding.gainLoss >= 0 ? "+" : ""}{holding.gainLossPercent.toFixed(2)}%)
-                              </span>
-                            </div>
-                          ) : (
+                          {holding.gainLoss !== undefined && holding.gainLossPercent !== undefined ? (() => {
+                            const displayGainLoss = currencyMode === "display" ? (holding.gainLossConverted ?? holding.gainLoss) : holding.gainLoss;
+                            const displayCostBasis = currencyMode === "display" ? (holding.totalCostConverted ?? holding.totalCost) : holding.totalCost;
+                            const displayGainLossPercent = displayCostBasis > 0 ? (displayGainLoss / displayCostBasis) * 100 : 0;
+                            return (
+                              <div className={displayGainLoss >= 0 ? "text-green-700" : "text-red-700"}>
+                                <span>{displayGainLoss >= 0 ? "+" : ""}{currencyMode === "display" ? getCurrencySymbol(displayCurrency) : "$"}{Math.abs(displayGainLoss).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                <span className="block text-xs">
+                                  ({displayGainLoss >= 0 ? "+" : ""}{displayGainLossPercent.toFixed(2)}%)
+                                </span>
+                              </div>
+                            );
+                          })() : (
                             <span className="text-[#a3a3a3]">—</span>
                           )}
                         </td>
@@ -825,7 +868,7 @@ export default function HoldingsView({
                           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
                             <div className="flex items-center gap-1">
                               <span className="text-[#171717] font-medium">
-                                {currencyMode === "display" ? getCurrencySymbol(displayCurrency) : "$"}{formatPrice(holding.currentPrice)}
+                                {currencyMode === "display" ? getCurrencySymbol(displayCurrency) : "$"}{formatPrice(currencyMode === "display" ? convertToDisplayCurrency(holding.currentPrice, "USD") : holding.currentPrice)}
                               </span>
                               {holding.isCustom && holding.priceSource === "manual" && (
                                 <button
@@ -886,26 +929,31 @@ export default function HoldingsView({
                         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#737373]">
                           <span>qty: {holding.totalQuantity.toLocaleString(undefined, { maximumFractionDigits: 6 })}</span>
                           <span>
-                            avg: {showCurrencySymbol} {holding.weightedAvgPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            avg: {showCurrencySymbol}{(currencyMode === "display" ? (holding.weightedAvgPriceConverted ?? holding.weightedAvgPrice) : holding.weightedAvgPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
                           <span>
-                            cost: {showCurrencySymbol} {holding.totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            cost: {showCurrencySymbol}{(currencyMode === "display" ? (holding.totalCostConverted ?? holding.totalCost) : holding.totalCost).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             {holding.hasMixedCurrencies && currencyMode === "original" && <span className="text-amber-600"> (mixed)</span>}
                           </span>
                           {holding.currentValue !== undefined && (
                             <span>
-                              value: {currencyMode === "display" ? getCurrencySymbol(displayCurrency) : "$"}{holding.currentValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              value: {currencyMode === "display" ? getCurrencySymbol(displayCurrency) : "$"}{(currencyMode === "display" ? (holding.currentValueConverted ?? holding.currentValue) : holding.currentValue).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </span>
                           )}
-                          {holding.gainLoss !== undefined && holding.gainLossPercent !== undefined && (
-                            <span
-                              className={
-                                holding.gainLoss >= 0 ? "text-green-700" : "text-red-700"
-                              }
-                            >
-                              {holding.gainLoss >= 0 ? "+" : ""}{currencyMode === "display" ? getCurrencySymbol(displayCurrency) : "$"}{Math.abs(holding.gainLoss).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ({holding.gainLoss >= 0 ? "+" : ""}{holding.gainLossPercent.toFixed(2)}%)
-                            </span>
-                          )}
+                          {holding.gainLoss !== undefined && holding.gainLossPercent !== undefined && (() => {
+                            const displayGainLoss = currencyMode === "display" ? (holding.gainLossConverted ?? holding.gainLoss) : holding.gainLoss;
+                            const displayCostBasis = currencyMode === "display" ? (holding.totalCostConverted ?? holding.totalCost) : holding.totalCost;
+                            const displayGainLossPercent = displayCostBasis > 0 ? (displayGainLoss / displayCostBasis) * 100 : 0;
+                            return (
+                              <span
+                                className={
+                                  displayGainLoss >= 0 ? "text-green-700" : "text-red-700"
+                                }
+                              >
+                                {displayGainLoss >= 0 ? "+" : ""}{currencyMode === "display" ? getCurrencySymbol(displayCurrency) : "$"}{Math.abs(displayGainLoss).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ({displayGainLoss >= 0 ? "+" : ""}{displayGainLossPercent.toFixed(2)}%)
+                              </span>
+                            );
+                          })()}
                           {holding.dividendYield !== undefined && holding.dividendYield !== null && (
                             <span className="text-purple-700">
                               yield: {holding.dividendYield.toFixed(2)}%

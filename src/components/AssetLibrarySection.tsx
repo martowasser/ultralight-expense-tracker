@@ -11,7 +11,7 @@ import PortfolioDashboard from "./PortfolioDashboard";
 import HistoryTab from "./HistoryTab";
 import DividendsTab from "./DividendsTab";
 import UserCurrencySettings from "./UserCurrencySettings";
-import { Asset, Investment, CachedPrice, HoldingDividendYield, UserSettings, getAssets, getInvestments, GetAssetsInput, fetchAssetPrices, clearPriceCache, getHoldingDividendYields, getUserSettings } from "@/app/investments/actions";
+import { Asset, Investment, CachedPrice, HoldingDividendYield, UserSettings, CurrencyConversionRates, getAssets, getInvestments, GetAssetsInput, fetchAssetPrices, clearPriceCache, getHoldingDividendYields, getUserSettings, getPortfolioExchangeRates } from "@/app/investments/actions";
 import { AssetType, Currency } from "@/generated/prisma/enums";
 
 type TabType = "holdings" | "history" | "dividends";
@@ -34,6 +34,7 @@ export default function AssetLibrarySection({
   const [investments, setInvestments] = useState<Investment[]>(initialInvestments);
   const [prices, setPrices] = useState<CachedPrice[]>([]);
   const [dividendYields, setDividendYields] = useState<HoldingDividendYield[]>([]);
+  const [exchangeRates, setExchangeRates] = useState<CurrencyConversionRates>({});
   const [pricesLoading, setPricesLoading] = useState(false);
   const [lastPriceUpdate, setLastPriceUpdate] = useState<Date | null>(null);
   const [refreshFeedback, setRefreshFeedback] = useState<RefreshFeedback | null>(null);
@@ -47,19 +48,31 @@ export default function AssetLibrarySection({
   const [displayCurrency, setDisplayCurrency] = useState<Currency>("USD");
   const router = useRouter();
 
+  // Fetch exchange rates for the display currency
+  const fetchExchangeRatesData = useCallback(async (currency: Currency) => {
+    const result = await getPortfolioExchangeRates(currency);
+    if (result.success && result.rates) {
+      setExchangeRates(result.rates);
+    }
+  }, []);
+
   // Fetch user settings on mount
   useEffect(() => {
     const fetchUserSettings = async () => {
       const result = await getUserSettings();
       if (result.success && result.settings) {
         setDisplayCurrency(result.settings.displayCurrency);
+        // Fetch exchange rates for the display currency
+        fetchExchangeRatesData(result.settings.displayCurrency);
       }
     };
     fetchUserSettings();
-  }, []);
+  }, [fetchExchangeRatesData]);
 
   const handleSettingsChange = (settings: UserSettings) => {
     setDisplayCurrency(settings.displayCurrency);
+    // Fetch new exchange rates when display currency changes
+    fetchExchangeRatesData(settings.displayCurrency);
   };
 
   const fetchAssets = useCallback(async () => {
@@ -310,6 +323,7 @@ export default function AssetLibrarySection({
         investments={investments}
         prices={prices}
         displayCurrency={displayCurrency}
+        exchangeRates={exchangeRates}
       />
 
       {/* Tab Navigation */}
@@ -441,6 +455,7 @@ export default function AssetLibrarySection({
             pricesLoading={pricesLoading}
             lastPriceUpdate={lastPriceUpdate}
             displayCurrency={displayCurrency}
+            exchangeRates={exchangeRates}
             onRefresh={handleRefresh}
             onRefreshPrices={handleRefreshPrices}
             onAddInvestment={() => setShowAddModal(true)}
