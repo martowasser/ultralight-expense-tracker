@@ -90,3 +90,20 @@ Started: Wed Jan 21 00:10:20 -03 2026
   - Filter results show "X of Y lots" when filters are active
   - Clear filters button appears when no investments match filters
 ---
+
+## 2026-01-21 - US-INV-005
+- What was implemented: Lot Tracking feature - holdings view that aggregates investments by symbol
+- Files changed:
+  - src/components/HoldingsView.tsx - New component that aggregates lots by symbol with expand/collapse
+  - src/components/AssetLibrarySection.tsx - Replaced InvestmentsList with HoldingsView
+- **Learnings for future iterations:**
+  - HoldingsView aggregates investments into holdings grouped by symbol
+  - Weighted average price = totalCost / totalQuantity for each holding
+  - Holdings with multiple lots show lot count badge (e.g., "3 lots")
+  - Click on holding row expands to show individual lots (only for multiple lots)
+  - Each lot can be edited/deleted independently via buttons in expanded view
+  - Single lot holdings show edit/delete buttons directly on the holding row
+  - Lots within a holding are sorted by purchase date descending (newest first)
+  - Filter by symbol/name, asset type, and platform works across aggregated holdings
+  - InvestmentsList.tsx is still available but not used (HoldingsView replaced it)
+---
