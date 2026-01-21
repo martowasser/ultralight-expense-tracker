@@ -1,10 +1,44 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Investment, CachedPrice } from "@/app/investments/actions";
 import { AssetType } from "@/generated/prisma/enums";
 import DeleteInvestmentModal from "./DeleteInvestmentModal";
+
+// Asset type icon colors (Tailwind needs full class names, not dynamic construction)
+const assetTypeColors: Record<AssetType, string> = {
+  CRYPTO: "text-[#f59e0b]",  // amber
+  STOCK: "text-[#3b82f6]",   // blue
+  ETF: "text-[#10b981]",     // green
+};
+
+// Asset type icons
+const AssetTypeIcon = ({ type }: { type: AssetType }) => {
+  switch (type) {
+    case "CRYPTO":
+      return (
+        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-4h2v2h-2v-2zm0-2h2V7h-2v7z" />
+          <circle cx="12" cy="12" r="3" />
+        </svg>
+      );
+    case "STOCK":
+      return (
+        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M3 13h2v8H3v-8zm4-5h2v13H7V8zm4-5h2v18h-2V3zm4 8h2v10h-2V11zm4-3h2v13h-2V8z" />
+        </svg>
+      );
+    case "ETF":
+      return (
+        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z" />
+        </svg>
+      );
+    default:
+      return null;
+  }
+};
 
 interface HoldingsViewProps {
   investments: Investment[];
@@ -379,49 +413,102 @@ export default function HoldingsView({
           )}
         </div>
       ) : (
-        <div className="border border-[#e5e5e5] divide-y divide-[#e5e5e5]">
-          {holdings.map((holding) => {
-            const isExpanded = expandedHoldings.has(holding.symbol);
-            const hasMultipleLots = holding.lots.length > 1;
-            // Get the primary currency from the first lot (for display purposes)
-            const primaryCurrency = holding.lots[0].purchaseCurrency;
+        <>
+          {/* Desktop Table View - hidden on mobile */}
+          <div className="hidden md:block border border-[#e5e5e5] bg-white overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-[#fafafa] border-b border-[#e5e5e5]">
+                <tr>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-[#737373]">Asset</th>
+                  <th className="text-right px-4 py-3 text-xs font-medium text-[#737373]">Quantity</th>
+                  <th className="text-right px-4 py-3 text-xs font-medium text-[#737373]">Avg Price</th>
+                  <th className="text-right px-4 py-3 text-xs font-medium text-[#737373]">Current Price</th>
+                  <th className="text-right px-4 py-3 text-xs font-medium text-[#737373]">Value</th>
+                  <th className="text-right px-4 py-3 text-xs font-medium text-[#737373]">Gain/Loss</th>
+                  <th className="text-right px-4 py-3 text-xs font-medium text-[#737373]">24h</th>
+                  <th className="text-right px-4 py-3 text-xs font-medium text-[#737373]">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#e5e5e5]">
+                {holdings.map((holding) => {
+                  const isExpanded = expandedHoldings.has(holding.symbol);
+                  const hasMultipleLots = holding.lots.length > 1;
+                  const primaryCurrency = holding.lots[0].purchaseCurrency;
 
-            return (
-              <div key={holding.symbol} className="bg-white">
-                {/* Holding Summary Row */}
-                <div
-                  className={`p-4 hover:bg-[#fafafa] transition-colors ${hasMultipleLots ? "cursor-pointer" : ""}`}
-                  onClick={() => hasMultipleLots && toggleExpand(holding.symbol)}
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      {/* Symbol, Name, and Lot Badge */}
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-[#171717]">
-                          {holding.symbol}
-                        </span>
-                        <span className="text-xs text-[#a3a3a3] px-1.5 py-0.5 bg-[#f5f5f5] rounded">
-                          {holding.type.toLowerCase()}
-                        </span>
-                        {hasMultipleLots && (
-                          <span className="text-xs text-[#fafafa] px-1.5 py-0.5 bg-[#737373] rounded">
-                            {holding.lots.length} lots
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs text-[#737373] mt-0.5 truncate">
-                        {holding.name}
-                      </p>
-
-                      {/* Price and Market Data */}
-                      {holding.currentPrice !== undefined && (
-                        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
-                          <span className="text-[#171717] font-medium">
-                            ${formatPrice(holding.currentPrice)}
-                          </span>
-                          {holding.change24h !== null && holding.change24h !== undefined && (
+                  return (
+                    <React.Fragment key={holding.symbol}>
+                      {/* Main Holding Row */}
+                      <tr
+                        className={`hover:bg-[#fafafa] transition-colors ${hasMultipleLots ? "cursor-pointer" : ""}`}
+                        onClick={() => hasMultipleLots && toggleExpand(holding.symbol)}
+                      >
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <span className={assetTypeColors[holding.type]}>
+                              <AssetTypeIcon type={holding.type} />
+                            </span>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium text-[#171717]">{holding.symbol}</span>
+                                {hasMultipleLots && (
+                                  <span className="text-xs text-[#fafafa] px-1.5 py-0.5 bg-[#737373] rounded">
+                                    {holding.lots.length} lots
+                                  </span>
+                                )}
+                                {hasMultipleLots && (
+                                  <svg
+                                    className={`w-3 h-3 text-[#737373] transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                  </svg>
+                                )}
+                              </div>
+                              <span className="text-xs text-[#737373]">{holding.name}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-right text-[#171717]">
+                          {holding.totalQuantity.toLocaleString(undefined, { maximumFractionDigits: 6 })}
+                        </td>
+                        <td className="px-4 py-3 text-right text-[#737373]">
+                          {primaryCurrency} {holding.weightedAvgPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          {holding.currentPrice !== undefined ? (
+                            <div>
+                              <span className="text-[#171717]">${formatPrice(holding.currentPrice)}</span>
+                              {holding.priceSource && (
+                                <span className="block text-xs text-[#a3a3a3]">via {formatSourceName(holding.priceSource)}</span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-[#a3a3a3]">—</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-right text-[#171717] font-medium">
+                          {holding.currentValue !== undefined
+                            ? `$${holding.currentValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                            : "—"}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          {holding.gainLoss !== undefined && holding.gainLossPercent !== undefined ? (
+                            <div className={holding.gainLoss >= 0 ? "text-green-700" : "text-red-700"}>
+                              <span>{holding.gainLoss >= 0 ? "+" : ""}${holding.gainLoss.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                              <span className="block text-xs">
+                                ({holding.gainLoss >= 0 ? "+" : ""}{holding.gainLossPercent.toFixed(2)}%)
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-[#a3a3a3]">—</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          {holding.change24h !== null && holding.change24h !== undefined ? (
                             <span
-                              className={`px-1.5 py-0.5 rounded ${
+                              className={`inline-block px-1.5 py-0.5 rounded text-xs ${
                                 holding.change24h >= 0
                                   ? "text-green-700 bg-green-50"
                                   : "text-red-700 bg-red-50"
@@ -430,128 +517,71 @@ export default function HoldingsView({
                               {holding.change24h >= 0 ? "+" : ""}
                               {holding.change24h.toFixed(2)}%
                             </span>
+                          ) : (
+                            <span className="text-[#a3a3a3]">—</span>
                           )}
-                          {holding.priceSource && (
-                            <span className="text-[#a3a3a3]">
-                              via {formatSourceName(holding.priceSource)}
-                            </span>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          {!hasMultipleLots && (
+                            <div className="flex justify-end gap-1">
+                              {onEditInvestment && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onEditInvestment(holding.lots[0]);
+                                  }}
+                                  className="px-2 py-1 text-xs text-[#737373] border border-[#e5e5e5] hover:border-[#a3a3a3] hover:text-[#171717]"
+                                >
+                                  edit
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDeleteInvestmentId(holding.lots[0].id);
+                                }}
+                                className="px-2 py-1 text-xs text-[#737373] border border-[#e5e5e5] hover:border-[#a3a3a3] hover:text-[#171717]"
+                              >
+                                delete
+                              </button>
+                            </div>
                           )}
-                        </div>
-                      )}
-
-                      {/* Aggregated Details */}
-                      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#737373]">
-                        <span>qty: {holding.totalQuantity.toLocaleString(undefined, { maximumFractionDigits: 6 })}</span>
-                        <span>
-                          avg: {primaryCurrency} {holding.weightedAvgPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </span>
-                        <span>
-                          cost: {primaryCurrency} {holding.totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </span>
-                        {holding.currentValue !== undefined && (
-                          <span>
-                            value: ${holding.currentValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </span>
-                        )}
-                        {holding.gainLoss !== undefined && holding.gainLossPercent !== undefined && (
-                          <span
-                            className={
-                              holding.gainLoss >= 0 ? "text-green-700" : "text-red-700"
-                            }
-                          >
-                            {holding.gainLoss >= 0 ? "+" : ""}${holding.gainLoss.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ({holding.gainLoss >= 0 ? "+" : ""}{holding.gainLossPercent.toFixed(2)}%)
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Expand/Collapse Icon for multiple lots */}
-                    {hasMultipleLots && (
-                      <div className="shrink-0 flex items-center justify-center w-8 h-8 text-[#737373]">
-                        <svg
-                          className={`w-4 h-4 transition-transform ${isExpanded ? "rotate-180" : ""}`}
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </div>
-                    )}
-
-                    {/* Actions for single lot */}
-                    {!hasMultipleLots && (
-                      <div className="shrink-0 flex gap-2">
-                        {onEditInvestment && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onEditInvestment(holding.lots[0]);
-                            }}
-                            className="px-3 py-2 text-xs text-[#737373] border border-[#e5e5e5] hover:border-[#a3a3a3] hover:text-[#171717] min-h-[36px]"
-                          >
-                            edit
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeleteInvestmentId(holding.lots[0].id);
-                          }}
-                          className="px-3 py-2 text-xs text-[#737373] border border-[#e5e5e5] hover:border-[#a3a3a3] hover:text-[#171717] min-h-[36px]"
-                        >
-                          delete
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Expanded Lots View */}
-                {isExpanded && hasMultipleLots && (
-                  <div className="bg-[#fafafa] border-t border-[#e5e5e5]">
-                    <div className="px-4 py-2 text-xs text-[#a3a3a3] border-b border-[#e5e5e5]">
-                      individual lots
-                    </div>
-                    <div className="divide-y divide-[#e5e5e5]">
-                      {holding.lots.map((lot) => {
+                        </td>
+                      </tr>
+                      {/* Expanded Lots Rows */}
+                      {isExpanded && hasMultipleLots && holding.lots.map((lot) => {
                         const lotCost = parseFloat(lot.quantity) * parseFloat(lot.purchasePrice);
-
                         return (
-                          <div
-                            key={lot.id}
-                            className="px-4 py-3 hover:bg-[#f5f5f5] transition-colors"
-                          >
-                            <div className="flex items-start justify-between gap-4">
-                              <div className="flex-1 min-w-0">
-                                {/* Lot Details */}
-                                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#737373]">
-                                  <span>qty: {lot.quantity}</span>
-                                  <span>
-                                    @ {lot.purchaseCurrency} {lot.purchasePrice}
-                                  </span>
-                                  <span>= {lot.purchaseCurrency} {lotCost.toFixed(2)}</span>
-                                </div>
-                                <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#a3a3a3]">
-                                  <span>{lot.platform}</span>
-                                  <span>{formatDate(lot.purchaseDate)}</span>
-                                </div>
-                                {lot.notes && (
-                                  <p className="mt-1 text-xs text-[#a3a3a3] italic truncate">
-                                    {lot.notes}
-                                  </p>
-                                )}
+                          <tr key={lot.id} className="bg-[#fafafa] hover:bg-[#f5f5f5] transition-colors">
+                            <td className="px-4 py-2 pl-12">
+                              <div className="text-xs text-[#a3a3a3]">
+                                <span className="font-medium text-[#737373]">{lot.platform}</span>
+                                <span className="mx-2">·</span>
+                                {formatDate(lot.purchaseDate)}
+                                {lot.notes && <span className="ml-2 italic">"{lot.notes}"</span>}
                               </div>
-
-                              {/* Lot Actions */}
-                              <div className="shrink-0 flex gap-2">
+                            </td>
+                            <td className="px-4 py-2 text-right text-xs text-[#737373]">
+                              {lot.quantity}
+                            </td>
+                            <td className="px-4 py-2 text-right text-xs text-[#a3a3a3]">
+                              {lot.purchaseCurrency} {lot.purchasePrice}
+                            </td>
+                            <td className="px-4 py-2 text-right text-xs text-[#a3a3a3]">—</td>
+                            <td className="px-4 py-2 text-right text-xs text-[#737373]">
+                              {lot.purchaseCurrency} {lotCost.toFixed(2)}
+                            </td>
+                            <td className="px-4 py-2 text-right text-xs text-[#a3a3a3]">—</td>
+                            <td className="px-4 py-2 text-right text-xs text-[#a3a3a3]">—</td>
+                            <td className="px-4 py-2 text-right">
+                              <div className="flex justify-end gap-1">
                                 {onEditInvestment && (
                                   <button
                                     type="button"
                                     onClick={() => onEditInvestment(lot)}
-                                    className="px-2 py-1.5 text-xs text-[#737373] border border-[#e5e5e5] hover:border-[#a3a3a3] hover:text-[#171717] min-h-[32px]"
+                                    className="px-2 py-1 text-xs text-[#737373] border border-[#e5e5e5] hover:border-[#a3a3a3] hover:text-[#171717]"
                                   >
                                     edit
                                   </button>
@@ -559,22 +589,222 @@ export default function HoldingsView({
                                 <button
                                   type="button"
                                   onClick={() => setDeleteInvestmentId(lot.id)}
-                                  className="px-2 py-1.5 text-xs text-[#737373] border border-[#e5e5e5] hover:border-[#a3a3a3] hover:text-[#171717] min-h-[32px]"
+                                  className="px-2 py-1 text-xs text-[#737373] border border-[#e5e5e5] hover:border-[#a3a3a3] hover:text-[#171717]"
                                 >
                                   delete
                                 </button>
                               </div>
-                            </div>
-                          </div>
+                            </td>
+                          </tr>
                         );
                       })}
+                    </React.Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile Card View - hidden on desktop */}
+          <div className="md:hidden border border-[#e5e5e5] divide-y divide-[#e5e5e5]">
+            {holdings.map((holding) => {
+              const isExpanded = expandedHoldings.has(holding.symbol);
+              const hasMultipleLots = holding.lots.length > 1;
+              const primaryCurrency = holding.lots[0].purchaseCurrency;
+
+              return (
+                <div key={holding.symbol} className="bg-white">
+                  {/* Holding Summary Card */}
+                  <div
+                    className={`p-4 hover:bg-[#fafafa] transition-colors ${hasMultipleLots ? "cursor-pointer" : ""}`}
+                    onClick={() => hasMultipleLots && toggleExpand(holding.symbol)}
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        {/* Symbol, Name, Type Icon, and Lot Badge */}
+                        <div className="flex items-center gap-2">
+                          <span className={assetTypeColors[holding.type]}>
+                            <AssetTypeIcon type={holding.type} />
+                          </span>
+                          <span className="text-sm font-medium text-[#171717]">
+                            {holding.symbol}
+                          </span>
+                          <span className="text-xs text-[#a3a3a3] px-1.5 py-0.5 bg-[#f5f5f5] rounded">
+                            {holding.type.toLowerCase()}
+                          </span>
+                          {hasMultipleLots && (
+                            <span className="text-xs text-[#fafafa] px-1.5 py-0.5 bg-[#737373] rounded">
+                              {holding.lots.length} lots
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-[#737373] mt-0.5 truncate">
+                          {holding.name}
+                        </p>
+
+                        {/* Price and Market Data */}
+                        {holding.currentPrice !== undefined && (
+                          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+                            <span className="text-[#171717] font-medium">
+                              ${formatPrice(holding.currentPrice)}
+                            </span>
+                            {holding.change24h !== null && holding.change24h !== undefined && (
+                              <span
+                                className={`px-1.5 py-0.5 rounded ${
+                                  holding.change24h >= 0
+                                    ? "text-green-700 bg-green-50"
+                                    : "text-red-700 bg-red-50"
+                                }`}
+                              >
+                                {holding.change24h >= 0 ? "+" : ""}
+                                {holding.change24h.toFixed(2)}%
+                              </span>
+                            )}
+                            {holding.priceSource && (
+                              <span className="text-[#a3a3a3]">
+                                via {formatSourceName(holding.priceSource)}
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Aggregated Details */}
+                        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#737373]">
+                          <span>qty: {holding.totalQuantity.toLocaleString(undefined, { maximumFractionDigits: 6 })}</span>
+                          <span>
+                            avg: {primaryCurrency} {holding.weightedAvgPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                          <span>
+                            cost: {primaryCurrency} {holding.totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                          {holding.currentValue !== undefined && (
+                            <span>
+                              value: ${holding.currentValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </span>
+                          )}
+                          {holding.gainLoss !== undefined && holding.gainLossPercent !== undefined && (
+                            <span
+                              className={
+                                holding.gainLoss >= 0 ? "text-green-700" : "text-red-700"
+                              }
+                            >
+                              {holding.gainLoss >= 0 ? "+" : ""}${holding.gainLoss.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ({holding.gainLoss >= 0 ? "+" : ""}{holding.gainLossPercent.toFixed(2)}%)
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Expand/Collapse Icon for multiple lots */}
+                      {hasMultipleLots && (
+                        <div className="shrink-0 flex items-center justify-center w-8 h-8 text-[#737373]">
+                          <svg
+                            className={`w-4 h-4 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
+                      )}
+
+                      {/* Actions for single lot */}
+                      {!hasMultipleLots && (
+                        <div className="shrink-0 flex gap-2">
+                          {onEditInvestment && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onEditInvestment(holding.lots[0]);
+                              }}
+                              className="px-3 py-2 text-xs text-[#737373] border border-[#e5e5e5] hover:border-[#a3a3a3] hover:text-[#171717] min-h-[36px]"
+                            >
+                              edit
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteInvestmentId(holding.lots[0].id);
+                            }}
+                            className="px-3 py-2 text-xs text-[#737373] border border-[#e5e5e5] hover:border-[#a3a3a3] hover:text-[#171717] min-h-[36px]"
+                          >
+                            delete
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+
+                  {/* Expanded Lots View */}
+                  {isExpanded && hasMultipleLots && (
+                    <div className="bg-[#fafafa] border-t border-[#e5e5e5]">
+                      <div className="px-4 py-2 text-xs text-[#a3a3a3] border-b border-[#e5e5e5]">
+                        individual lots
+                      </div>
+                      <div className="divide-y divide-[#e5e5e5]">
+                        {holding.lots.map((lot) => {
+                          const lotCost = parseFloat(lot.quantity) * parseFloat(lot.purchasePrice);
+
+                          return (
+                            <div
+                              key={lot.id}
+                              className="px-4 py-3 hover:bg-[#f5f5f5] transition-colors"
+                            >
+                              <div className="flex items-start justify-between gap-4">
+                                <div className="flex-1 min-w-0">
+                                  {/* Lot Details */}
+                                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#737373]">
+                                    <span>qty: {lot.quantity}</span>
+                                    <span>
+                                      @ {lot.purchaseCurrency} {lot.purchasePrice}
+                                    </span>
+                                    <span>= {lot.purchaseCurrency} {lotCost.toFixed(2)}</span>
+                                  </div>
+                                  <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#a3a3a3]">
+                                    <span>{lot.platform}</span>
+                                    <span>{formatDate(lot.purchaseDate)}</span>
+                                  </div>
+                                  {lot.notes && (
+                                    <p className="mt-1 text-xs text-[#a3a3a3] italic truncate">
+                                      {lot.notes}
+                                    </p>
+                                  )}
+                                </div>
+
+                                {/* Lot Actions */}
+                                <div className="shrink-0 flex gap-2">
+                                  {onEditInvestment && (
+                                    <button
+                                      type="button"
+                                      onClick={() => onEditInvestment(lot)}
+                                      className="px-2 py-1.5 text-xs text-[#737373] border border-[#e5e5e5] hover:border-[#a3a3a3] hover:text-[#171717] min-h-[32px]"
+                                    >
+                                      edit
+                                    </button>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => setDeleteInvestmentId(lot.id)}
+                                    className="px-2 py-1.5 text-xs text-[#737373] border border-[#e5e5e5] hover:border-[#a3a3a3] hover:text-[#171717] min-h-[32px]"
+                                  >
+                                    delete
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </>
       )}
 
       {/* Delete Confirmation Modal */}
