@@ -10,6 +10,7 @@ Started: Wed Jan 21 00:10:20 -03 2026
 - Use `router.refresh()` after mutations to refresh server components
 - Seed files should be excluded from tsconfig to avoid compilation issues
 - Use `npx tsx` for running TypeScript scripts like seeds
+- In Next.js 16+, "use server" files can ONLY export async functions - constants must go in separate files (e.g., constants.ts)
 ---
 
 ## 2026-01-21 - US-INV-032
@@ -43,4 +44,20 @@ Started: Wed Jan 21 00:10:20 -03 2026
   - Search is case-insensitive and matches both symbol and name
   - Debounced search (300ms) for better UX
   - Assets grouped by type in display, with type order: CRYPTO, STOCK, ETF
+---
+
+## 2026-01-21 - US-INV-002
+- What was implemented: Add Investment feature
+- Files changed:
+  - src/app/investments/actions.ts - Added createInvestment action with validation
+  - src/app/investments/constants.ts - Created for PLATFORMS and CURRENCIES constants (can't export from "use server" files)
+  - src/components/AddInvestmentModal.tsx - Modal component for creating investments
+  - src/components/AssetLibrarySection.tsx - Added "add investment" button to open modal
+- **Learnings for future iterations:**
+  - Next.js 16+ "use server" files can only export async functions - constants must be in separate files
+  - Investment form includes: asset selection (with search), quantity, price, currency, date, platform, notes
+  - Quantity validation respects asset precision (6 for crypto, 2 for stocks)
+  - Total cost is calculated and displayed before saving
+  - Common platforms provided in dropdown with "Other" option for custom entry
+  - All 10 currencies are supported for investment purchases
 ---
