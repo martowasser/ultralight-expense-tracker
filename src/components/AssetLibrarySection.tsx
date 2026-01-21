@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import AssetLibraryList from "./AssetLibraryList";
 import AddInvestmentModal from "./AddInvestmentModal";
 import HoldingsView from "./HoldingsView";
-import { Asset, Investment, getAssets, getInvestments, GetAssetsInput } from "@/app/investments/actions";
+import { Asset, Investment, CachedPrice, getAssets, getInvestments, GetAssetsInput, fetchAssetPrices } from "@/app/investments/actions";
 import { AssetType } from "@/generated/prisma/enums";
 
 interface AssetLibrarySectionProps {
@@ -19,6 +19,9 @@ export default function AssetLibrarySection({
 }: AssetLibrarySectionProps) {
   const [assets, setAssets] = useState<Asset[]>(initialAssets);
   const [investments, setInvestments] = useState<Investment[]>(initialInvestments);
+  const [prices, setPrices] = useState<CachedPrice[]>([]);
+  const [pricesLoading, setPricesLoading] = useState(false);
+  const [lastPriceUpdate, setLastPriceUpdate] = useState<Date | null>(null);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<AssetType | "ALL">("ALL");
   const [isLoading, setIsLoading] = useState(false);
@@ -62,10 +65,38 @@ export default function AssetLibrarySection({
     }
   }, []);
 
+  const fetchPricesData = useCallback(async () => {
+    setPricesLoading(true);
+    const result = await fetchAssetPrices();
+    if (result.success && result.prices) {
+      setPrices(result.prices);
+      // Find the most recent fetchedAt timestamp
+      if (result.prices.length > 0) {
+        const mostRecent = result.prices.reduce((latest, price) => {
+          const priceDate = new Date(price.fetchedAt);
+          return priceDate > latest ? priceDate : latest;
+        }, new Date(0));
+        setLastPriceUpdate(mostRecent);
+      }
+    }
+    setPricesLoading(false);
+  }, []);
+
+  // Fetch prices on mount and when investments change
+  useEffect(() => {
+    if (investments.length > 0) {
+      fetchPricesData();
+    }
+  }, [investments.length, fetchPricesData]);
+
   const handleRefresh = () => {
     fetchAssets();
     fetchInvestments();
     router.refresh();
+  };
+
+  const handleRefreshPrices = () => {
+    fetchPricesData();
   };
 
   const handleAddSuccess = () => {
@@ -161,7 +192,11 @@ export default function AssetLibrarySection({
       {/* User's Holdings */}
       <HoldingsView
         investments={investments}
+        prices={prices}
+        pricesLoading={pricesLoading}
+        lastPriceUpdate={lastPriceUpdate}
         onRefresh={handleRefresh}
+        onRefreshPrices={handleRefreshPrices}
         onAddInvestment={() => setShowAddModal(true)}
       />
 

@@ -3,6 +3,7 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { AssetType, Currency } from "@/generated/prisma/enums";
+import { fetchPrices as fetchPricesFromAPIs, PriceData } from "@/lib/priceService";
 
 // ==========================================
 // Asset Library Types
@@ -506,5 +507,183 @@ export async function deleteInvestment(investmentId: string): Promise<DeleteInve
   } catch (error) {
     console.error("Error deleting investment:", error);
     return { success: false, error: "Failed to delete investment" };
+  }
+}
+
+// ==========================================
+// Price Fetching Types
+// ==========================================
+
+export interface CachedPrice {
+  symbol: string;
+  price: string;
+  change24h: string | null;
+  source: string;
+  fetchedAt: Date;
+}
+
+export interface FetchAssetPricesResult {
+  success: boolean;
+  error?: string;
+  prices?: CachedPrice[];
+  fromCache?: boolean;
+}
+
+// ==========================================
+// Price Fetching Actions
+// ==========================================
+
+/**
+ * Fetch prices for user's portfolio assets
+ * Uses PriceCache to store/retrieve prices with 5-minute TTL
+ */
+export async function fetchAssetPrices(): Promise<FetchAssetPricesResult> {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  try {
+    // Get unique assets from user's investments
+    const investments = await prisma.investment.findMany({
+      where: { userId: session.user.id },
+      include: { asset: true },
+    });
+
+    if (investments.length === 0) {
+      return { success: true, prices: [], fromCache: false };
+    }
+
+    // Get unique symbols with their types
+    const assetMap = new Map<string, { symbol: string; type: AssetType }>();
+    investments.forEach((inv) => {
+      if (!assetMap.has(inv.asset.symbol)) {
+        assetMap.set(inv.asset.symbol, {
+          symbol: inv.asset.symbol,
+          type: inv.asset.type,
+        });
+      }
+    });
+
+    const symbols = Array.from(assetMap.keys());
+
+    // Check cache first (5 minute TTL)
+    const cacheExpiry = new Date(Date.now() - 5 * 60 * 1000);
+    const cachedPrices = await prisma.priceCache.findMany({
+      where: {
+        symbol: { in: symbols },
+        fetchedAt: { gte: cacheExpiry },
+      },
+    });
+
+    const cachedSymbols = new Set(cachedPrices.map((p) => p.symbol));
+    const symbolsToFetch = symbols.filter((s) => !cachedSymbols.has(s));
+
+    let freshPrices: PriceData[] = [];
+
+    // Fetch fresh prices for symbols not in cache
+    if (symbolsToFetch.length > 0) {
+      const assetsToFetch = symbolsToFetch.map((s) => assetMap.get(s)!);
+      const fetchResult = await fetchPricesFromAPIs(assetsToFetch);
+
+      if (fetchResult.prices.length > 0) {
+        freshPrices = fetchResult.prices;
+
+        // Update cache with fresh prices (upsert)
+        await Promise.all(
+          freshPrices.map((price) =>
+            prisma.priceCache.upsert({
+              where: { symbol: price.symbol },
+              create: {
+                symbol: price.symbol,
+                price: price.price,
+                change24h: price.change24h,
+                source: price.source,
+                fetchedAt: price.fetchedAt,
+              },
+              update: {
+                price: price.price,
+                change24h: price.change24h,
+                source: price.source,
+                fetchedAt: price.fetchedAt,
+              },
+            })
+          )
+        );
+      }
+    }
+
+    // Combine cached and fresh prices
+    const allPrices: CachedPrice[] = [
+      ...cachedPrices.map((p) => ({
+        symbol: p.symbol,
+        price: p.price.toString(),
+        change24h: p.change24h?.toString() ?? null,
+        source: p.source,
+        fetchedAt: p.fetchedAt,
+      })),
+      ...freshPrices.map((p) => ({
+        symbol: p.symbol,
+        price: p.price.toString(),
+        change24h: p.change24h?.toString() ?? null,
+        source: p.source,
+        fetchedAt: p.fetchedAt,
+      })),
+    ];
+
+    return {
+      success: true,
+      prices: allPrices,
+      fromCache: symbolsToFetch.length === 0,
+    };
+  } catch (error) {
+    console.error("Error fetching asset prices:", error);
+    return { success: false, error: "Failed to fetch prices" };
+  }
+}
+
+/**
+ * Get cached prices without fetching new ones
+ */
+export async function getCachedPrices(): Promise<FetchAssetPricesResult> {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  try {
+    // Get unique assets from user's investments
+    const investments = await prisma.investment.findMany({
+      where: { userId: session.user.id },
+      select: { asset: { select: { symbol: true } } },
+    });
+
+    if (investments.length === 0) {
+      return { success: true, prices: [], fromCache: true };
+    }
+
+    const symbols = [...new Set(investments.map((inv) => inv.asset.symbol))];
+
+    // Get all cached prices (regardless of age)
+    const cachedPrices = await prisma.priceCache.findMany({
+      where: { symbol: { in: symbols } },
+    });
+
+    return {
+      success: true,
+      prices: cachedPrices.map((p) => ({
+        symbol: p.symbol,
+        price: p.price.toString(),
+        change24h: p.change24h?.toString() ?? null,
+        source: p.source,
+        fetchedAt: p.fetchedAt,
+      })),
+      fromCache: true,
+    };
+  } catch (error) {
+    console.error("Error getting cached prices:", error);
+    return { success: false, error: "Failed to get cached prices" };
   }
 }

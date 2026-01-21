@@ -2,13 +2,17 @@
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Investment } from "@/app/investments/actions";
+import { Investment, CachedPrice } from "@/app/investments/actions";
 import { AssetType } from "@/generated/prisma/enums";
 import DeleteInvestmentModal from "./DeleteInvestmentModal";
 
 interface HoldingsViewProps {
   investments: Investment[];
+  prices?: CachedPrice[];
+  pricesLoading?: boolean;
+  lastPriceUpdate?: Date | null;
   onRefresh: () => void;
+  onRefreshPrices?: () => void;
   onAddInvestment?: () => void;
   onEditInvestment?: (investment: Investment) => void;
 }
@@ -22,11 +26,22 @@ interface Holding {
   weightedAvgPrice: number;
   totalCost: number;
   lots: Investment[];
+  // Price data
+  currentPrice?: number;
+  change24h?: number | null;
+  priceSource?: string;
+  currentValue?: number;
+  gainLoss?: number;
+  gainLossPercent?: number;
 }
 
 export default function HoldingsView({
   investments,
+  prices = [],
+  pricesLoading = false,
+  lastPriceUpdate,
   onRefresh,
+  onRefreshPrices,
   onAddInvestment,
   onEditInvestment,
 }: HoldingsViewProps) {
@@ -51,6 +66,40 @@ export default function HoldingsView({
     });
   };
 
+  const formatLastUpdated = (date: Date | null | undefined) => {
+    if (!date) return "never";
+    const now = new Date();
+    const diffMs = now.getTime() - new Date(date).getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffSecs = Math.floor(diffMs / 1000);
+
+    if (diffSecs < 60) return "just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    return formatDate(date);
+  };
+
+  const formatPrice = (price: number) => {
+    if (price >= 1000) {
+      return price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    } else if (price >= 1) {
+      return price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+    } else {
+      return price.toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 8 });
+    }
+  };
+
+  const formatSourceName = (source: string) => {
+    const sourceNames: Record<string, string> = {
+      binance: "Binance",
+      yahoo: "Yahoo Finance",
+      coingecko: "CoinGecko",
+      manual: "Manual",
+    };
+    return sourceNames[source] || source;
+  };
+
   const toggleExpand = (symbol: string) => {
     setExpandedHoldings((prev) => {
       const next = new Set(prev);
@@ -62,6 +111,15 @@ export default function HoldingsView({
       return next;
     });
   };
+
+  // Create a map of prices by symbol for quick lookup
+  const priceMap = useMemo(() => {
+    const map = new Map<string, CachedPrice>();
+    prices.forEach((price) => {
+      map.set(price.symbol, price);
+    });
+    return map;
+  }, [prices]);
 
   // Get unique platforms from user's investments
   const uniquePlatforms = useMemo(() => {
@@ -123,9 +181,21 @@ export default function HoldingsView({
       }
     });
 
-    // Calculate weighted average price for each holding
+    // Calculate weighted average price and price data for each holding
     holdingsMap.forEach((holding) => {
       holding.weightedAvgPrice = holding.totalCost / holding.totalQuantity;
+
+      // Add price data if available
+      const priceData = priceMap.get(holding.symbol);
+      if (priceData) {
+        holding.currentPrice = parseFloat(priceData.price);
+        holding.change24h = priceData.change24h ? parseFloat(priceData.change24h) : null;
+        holding.priceSource = priceData.source;
+        holding.currentValue = holding.totalQuantity * holding.currentPrice;
+        holding.gainLoss = holding.currentValue - holding.totalCost;
+        holding.gainLossPercent = (holding.gainLoss / holding.totalCost) * 100;
+      }
+
       // Sort lots by purchase date descending (newest first)
       holding.lots.sort(
         (a, b) => new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime()
@@ -136,7 +206,7 @@ export default function HoldingsView({
     return Array.from(holdingsMap.values()).sort((a, b) =>
       a.symbol.localeCompare(b.symbol)
     );
-  }, [filteredInvestments]);
+  }, [filteredInvestments, priceMap]);
 
   // Empty state for new users (no investments at all)
   if (investments.length === 0) {
@@ -170,8 +240,27 @@ export default function HoldingsView({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <span className="text-sm text-[#737373]">your holdings</span>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-[#737373]">your holdings</span>
+          {investments.length > 0 && (
+            <div className="flex items-center gap-2 text-xs text-[#a3a3a3]">
+              <span>updated {formatLastUpdated(lastPriceUpdate)}</span>
+              {onRefreshPrices && (
+                <button
+                  onClick={onRefreshPrices}
+                  disabled={pricesLoading}
+                  className={`px-2 py-1 border border-[#e5e5e5] hover:border-[#a3a3a3] hover:text-[#171717] ${
+                    pricesLoading ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
+                  title="Refresh prices"
+                >
+                  {pricesLoading ? "..." : "refresh"}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
         <span className="text-xs text-[#a3a3a3]">
           {holdings.length === 0
             ? "no matches"
@@ -306,15 +395,55 @@ export default function HoldingsView({
                         {holding.name}
                       </p>
 
+                      {/* Price and Market Data */}
+                      {holding.currentPrice !== undefined && (
+                        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+                          <span className="text-[#171717] font-medium">
+                            ${formatPrice(holding.currentPrice)}
+                          </span>
+                          {holding.change24h !== null && holding.change24h !== undefined && (
+                            <span
+                              className={`px-1.5 py-0.5 rounded ${
+                                holding.change24h >= 0
+                                  ? "text-green-700 bg-green-50"
+                                  : "text-red-700 bg-red-50"
+                              }`}
+                            >
+                              {holding.change24h >= 0 ? "+" : ""}
+                              {holding.change24h.toFixed(2)}%
+                            </span>
+                          )}
+                          {holding.priceSource && (
+                            <span className="text-[#a3a3a3]">
+                              via {formatSourceName(holding.priceSource)}
+                            </span>
+                          )}
+                        </div>
+                      )}
+
                       {/* Aggregated Details */}
                       <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#737373]">
-                        <span>total qty: {holding.totalQuantity.toLocaleString(undefined, { maximumFractionDigits: 6 })}</span>
+                        <span>qty: {holding.totalQuantity.toLocaleString(undefined, { maximumFractionDigits: 6 })}</span>
                         <span>
-                          avg price: {primaryCurrency} {holding.weightedAvgPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          avg: {primaryCurrency} {holding.weightedAvgPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                         <span>
-                          total cost: {primaryCurrency} {holding.totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          cost: {primaryCurrency} {holding.totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
+                        {holding.currentValue !== undefined && (
+                          <span>
+                            value: ${holding.currentValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        )}
+                        {holding.gainLoss !== undefined && holding.gainLossPercent !== undefined && (
+                          <span
+                            className={
+                              holding.gainLoss >= 0 ? "text-green-700" : "text-red-700"
+                            }
+                          >
+                            {holding.gainLoss >= 0 ? "+" : ""}${holding.gainLoss.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ({holding.gainLoss >= 0 ? "+" : ""}{holding.gainLossPercent.toFixed(2)}%)
+                          </span>
+                        )}
                       </div>
                     </div>
 
