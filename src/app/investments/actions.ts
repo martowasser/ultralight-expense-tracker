@@ -1584,6 +1584,264 @@ export async function getLatestSnapshot(): Promise<{ success: boolean; error?: s
   }
 }
 
+// ==========================================
+// Manual Snapshot Types
+// ==========================================
+
+export interface CreateManualSnapshotResult {
+  success: boolean;
+  error?: string;
+  snapshot?: PortfolioSnapshot;
+  wasUpdated?: boolean;
+}
+
+// ==========================================
+// Manual Snapshot Action
+// ==========================================
+
+/**
+ * Create a manual portfolio snapshot
+ * If a snapshot already exists for today, it will be updated with current values
+ * This action is triggered by the user to capture the current portfolio state
+ */
+export async function createManualSnapshot(): Promise<CreateManualSnapshotResult> {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  try {
+    // Normalize to start of day
+    const snapshotDate = new Date();
+    snapshotDate.setHours(0, 0, 0, 0);
+
+    // Check if a snapshot already exists for today
+    const existingSnapshot = await prisma.portfolioSnapshot.findFirst({
+      where: {
+        userId: session.user.id,
+        snapshotDate: snapshotDate,
+      },
+    });
+
+    // Fetch all investments with their assets
+    const investments = await prisma.investment.findMany({
+      where: { userId: session.user.id },
+      include: { asset: true },
+    });
+
+    if (investments.length === 0) {
+      // No investments - create or update with empty snapshot
+      if (existingSnapshot) {
+        const updated = await prisma.portfolioSnapshot.update({
+          where: { id: existingSnapshot.id },
+          data: {
+            totalValue: 0,
+            costBasis: 0,
+            cryptoValue: 0,
+            stockValue: 0,
+            holdings: [],
+          },
+        });
+
+        return {
+          success: true,
+          wasUpdated: true,
+          snapshot: {
+            id: updated.id,
+            userId: updated.userId,
+            snapshotDate: updated.snapshotDate,
+            totalValue: updated.totalValue.toString(),
+            costBasis: updated.costBasis.toString(),
+            cryptoValue: updated.cryptoValue.toString(),
+            stockValue: updated.stockValue.toString(),
+            holdings: [],
+            currency: updated.currency,
+            createdAt: updated.createdAt,
+          },
+        };
+      }
+
+      const snapshot = await prisma.portfolioSnapshot.create({
+        data: {
+          userId: session.user.id,
+          snapshotDate,
+          totalValue: 0,
+          costBasis: 0,
+          cryptoValue: 0,
+          stockValue: 0,
+          holdings: [],
+          currency: Currency.USD,
+        },
+      });
+
+      return {
+        success: true,
+        wasUpdated: false,
+        snapshot: {
+          id: snapshot.id,
+          userId: snapshot.userId,
+          snapshotDate: snapshot.snapshotDate,
+          totalValue: snapshot.totalValue.toString(),
+          costBasis: snapshot.costBasis.toString(),
+          cryptoValue: snapshot.cryptoValue.toString(),
+          stockValue: snapshot.stockValue.toString(),
+          holdings: [],
+          currency: snapshot.currency,
+          createdAt: snapshot.createdAt,
+        },
+      };
+    }
+
+    // Get unique symbols
+    const symbols = [...new Set(investments.map((inv) => inv.asset.symbol))];
+
+    // Fetch current prices from cache
+    const cachedPrices = await prisma.priceCache.findMany({
+      where: { symbol: { in: symbols } },
+    });
+
+    const priceMap = new Map(cachedPrices.map((p) => [p.symbol, parseFloat(p.price.toString())]));
+
+    // Aggregate investments by symbol (lot tracking)
+    const holdingsMap = new Map<string, {
+      symbol: string;
+      assetType: AssetType;
+      totalQuantity: number;
+      totalCost: number;
+    }>();
+
+    investments.forEach((inv) => {
+      const quantity = parseFloat(inv.quantity.toString());
+      const price = parseFloat(inv.purchasePrice.toString());
+      const cost = quantity * price;
+
+      const existing = holdingsMap.get(inv.asset.symbol);
+      if (existing) {
+        existing.totalQuantity += quantity;
+        existing.totalCost += cost;
+      } else {
+        holdingsMap.set(inv.asset.symbol, {
+          symbol: inv.asset.symbol,
+          assetType: inv.asset.type,
+          totalQuantity: quantity,
+          totalCost: cost,
+        });
+      }
+    });
+
+    // Build holdings array and calculate totals
+    const holdings: HoldingSnapshot[] = [];
+    let totalValue = 0;
+    let totalCostBasis = 0;
+    let cryptoValue = 0;
+    let stockValue = 0; // Includes both stocks and ETFs
+
+    holdingsMap.forEach((holding) => {
+      const currentPrice = priceMap.get(holding.symbol) ?? null;
+      const avgPrice = holding.totalCost / holding.totalQuantity;
+      const value = currentPrice !== null ? holding.totalQuantity * currentPrice : null;
+      const gainLoss = value !== null ? value - holding.totalCost : null;
+      const gainLossPercent = gainLoss !== null && holding.totalCost > 0
+        ? (gainLoss / holding.totalCost) * 100
+        : null;
+
+      holdings.push({
+        symbol: holding.symbol,
+        assetType: holding.assetType,
+        quantity: holding.totalQuantity.toString(),
+        avgPrice: avgPrice.toFixed(2),
+        currentPrice: currentPrice !== null ? currentPrice.toString() : null,
+        value: value !== null ? value.toFixed(2) : null,
+        costBasis: holding.totalCost.toFixed(2),
+        gainLoss: gainLoss !== null ? gainLoss.toFixed(2) : null,
+        gainLossPercent: gainLossPercent !== null ? gainLossPercent.toFixed(2) : null,
+      });
+
+      // Accumulate totals (only if we have current prices)
+      if (value !== null) {
+        totalValue += value;
+
+        if (holding.assetType === AssetType.CRYPTO) {
+          cryptoValue += value;
+        } else {
+          // STOCK and ETF both go into stockValue
+          stockValue += value;
+        }
+      }
+
+      totalCostBasis += holding.totalCost;
+    });
+
+    // Update existing or create new snapshot
+    if (existingSnapshot) {
+      const updated = await prisma.portfolioSnapshot.update({
+        where: { id: existingSnapshot.id },
+        data: {
+          totalValue,
+          costBasis: totalCostBasis,
+          cryptoValue,
+          stockValue,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          holdings: holdings as any,
+        },
+      });
+
+      return {
+        success: true,
+        wasUpdated: true,
+        snapshot: {
+          id: updated.id,
+          userId: updated.userId,
+          snapshotDate: updated.snapshotDate,
+          totalValue: updated.totalValue.toString(),
+          costBasis: updated.costBasis.toString(),
+          cryptoValue: updated.cryptoValue.toString(),
+          stockValue: updated.stockValue.toString(),
+          holdings,
+          currency: updated.currency,
+          createdAt: updated.createdAt,
+        },
+      };
+    }
+
+    // Create the snapshot
+    const snapshot = await prisma.portfolioSnapshot.create({
+      data: {
+        userId: session.user.id,
+        snapshotDate,
+        totalValue,
+        costBasis: totalCostBasis,
+        cryptoValue,
+        stockValue,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        holdings: holdings as any,
+        currency: Currency.USD,
+      },
+    });
+
+    return {
+      success: true,
+      wasUpdated: false,
+      snapshot: {
+        id: snapshot.id,
+        userId: snapshot.userId,
+        snapshotDate: snapshot.snapshotDate,
+        totalValue: snapshot.totalValue.toString(),
+        costBasis: snapshot.costBasis.toString(),
+        cryptoValue: snapshot.cryptoValue.toString(),
+        stockValue: snapshot.stockValue.toString(),
+        holdings,
+        currency: snapshot.currency,
+        createdAt: snapshot.createdAt,
+      },
+    };
+  } catch (error) {
+    console.error("Error creating manual snapshot:", error);
+    return { success: false, error: "Failed to create snapshot" };
+  }
+}
+
 /**
  * Get cache statistics for monitoring
  * Returns info about cached prices, freshness, and hit rate

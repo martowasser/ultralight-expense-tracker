@@ -8,6 +8,7 @@ import EditInvestmentModal from "./EditInvestmentModal";
 import CreateCustomAssetModal from "./CreateCustomAssetModal";
 import HoldingsView from "./HoldingsView";
 import PortfolioDashboard from "./PortfolioDashboard";
+import HistoryTab from "./HistoryTab";
 import { Asset, Investment, CachedPrice, getAssets, getInvestments, GetAssetsInput, fetchAssetPrices, clearPriceCache } from "@/app/investments/actions";
 import { AssetType } from "@/generated/prisma/enums";
 
@@ -422,15 +423,7 @@ export default function AssetLibrarySection({
       )}
 
       {activeTab === "history" && (
-        <div className="py-12 text-center">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[#f5f5f5] mb-4">
-            <svg className="w-6 h-6 text-[#a3a3a3]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <p className="text-sm text-[#737373] mb-1">history</p>
-          <p className="text-xs text-[#a3a3a3]">portfolio snapshots and performance history will appear here</p>
-        </div>
+        <HistoryTab onRefresh={handleRefresh} />
       )}
 
       {activeTab === "dividends" && (
