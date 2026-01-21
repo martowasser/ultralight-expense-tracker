@@ -471,3 +471,18 @@ Started: Wed Jan 21 00:10:20 -03 2026
   - Display mode vs original mode: display shows all values in user's preferred currency, original shows in purchase currencies
   - ExchangeRateMap already exists in exchangeRateService.ts - use CurrencyConversionRates to avoid name conflict
 ---
+
+## 2026-01-21 - US-INV-029
+- What was implemented: Currency Selector in Portfolio View - quick-access currency dropdown in portfolio header
+- Files changed:
+  - src/components/PortfolioCurrencySelector.tsx - New dropdown component for currency selection
+  - src/components/PortfolioDashboard.tsx - Added onCurrencyChange and isCurrencyLoading props, integrated selector in header
+  - src/components/AssetLibrarySection.tsx - Added currencyLoading state, handleCurrencyChange callback, passed new props to dashboard
+- **Learnings for future iterations:**
+  - PortfolioCurrencySelector is a lightweight dropdown vs UserCurrencySettings (full settings panel)
+  - Currency change triggers updateDisplayCurrency action to persist selection + fetchExchangeRatesData for recalculation
+  - currencyLoading state separate from pricesLoading - they're independent operations
+  - Loading spinner shown in dropdown button during currency change
+  - Dropdown uses click-outside pattern with ref and mousedown event listener
+  - CURRENCY_INFO from constants.ts provides symbol display for currency codes
+---
