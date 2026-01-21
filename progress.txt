@@ -276,3 +276,18 @@ Started: Wed Jan 21 00:10:20 -03 2026
   - Prisma Json field requires `as unknown as HoldingSnapshot[]` for reading and `as any` for writing
   - Snapshot includes both API-fetched prices (from PriceCache) and handles missing prices gracefully
 ---
+
+## 2026-01-21 - US-INV-017
+- What was implemented: Manual Snapshot feature - users can create snapshots on demand
+- Files changed:
+  - src/app/investments/actions.ts - Added createManualSnapshot action that creates or updates today's snapshot
+  - src/components/HistoryTab.tsx - New component with create snapshot button and snapshot list display
+  - src/components/AssetLibrarySection.tsx - Replaced placeholder history tab with HistoryTab component
+- **Learnings for future iterations:**
+  - createManualSnapshot returns wasUpdated flag to distinguish between create and update
+  - HistoryTab fetches snapshots via getPortfolioSnapshots with limit 50
+  - Snapshot list shows: date, value, gain/loss %, cost basis, crypto/stock allocation breakdown
+  - Empty state includes call-to-action button to create first snapshot
+  - Feedback toast displays success/error messages with auto-dismiss after 4 seconds
+  - Reusing existing PortfolioSnapshot type - no new types needed for manual snapshots
+---
