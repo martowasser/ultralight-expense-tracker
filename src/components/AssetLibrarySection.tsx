@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import AssetLibraryList from "./AssetLibraryList";
 import AddInvestmentModal from "./AddInvestmentModal";
 import EditInvestmentModal from "./EditInvestmentModal";
@@ -257,6 +258,29 @@ export default function AssetLibrarySection({
 
   return (
     <div className="space-y-6">
+      {/* Back Navigation */}
+      <div className="flex items-center gap-2">
+        <Link
+          href="/dashboard"
+          className="flex items-center gap-1 text-sm text-[#737373] hover:text-[#171717] min-h-[44px] transition-colors"
+        >
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M15 19l-7-7 7-7"
+            />
+          </svg>
+          <span>back to expenses</span>
+        </Link>
+      </div>
+
       {/* Header with Refresh Button */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
