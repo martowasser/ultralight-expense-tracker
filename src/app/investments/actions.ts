@@ -375,6 +375,147 @@ export async function createInvestment(input: CreateInvestmentInput): Promise<Cr
 }
 
 // ==========================================
+// Update Investment Types
+// ==========================================
+
+export interface UpdateInvestmentInput {
+  id: string;
+  quantity: string;
+  purchasePrice: string;
+  purchaseCurrency: Currency;
+  purchaseDate: string;
+  platform: string;
+  notes?: string;
+}
+
+export interface UpdateInvestmentResult {
+  success: boolean;
+  error?: string;
+  investment?: Investment;
+}
+
+// ==========================================
+// Update Investment Action
+// ==========================================
+
+/**
+ * Update an existing investment
+ * Note: Cannot edit symbol or asset type (must delete and recreate)
+ */
+export async function updateInvestment(input: UpdateInvestmentInput): Promise<UpdateInvestmentResult> {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  const { id, quantity, purchasePrice, purchaseCurrency, purchaseDate, platform, notes } = input;
+
+  // Validate required fields
+  if (!id) {
+    return { success: false, error: "Investment ID is required" };
+  }
+
+  if (!quantity || quantity.trim() === "") {
+    return { success: false, error: "Quantity is required" };
+  }
+
+  const quantityNum = parseFloat(quantity);
+  if (isNaN(quantityNum) || quantityNum <= 0) {
+    return { success: false, error: "Quantity must be a positive number" };
+  }
+
+  if (!purchasePrice || purchasePrice.trim() === "") {
+    return { success: false, error: "Purchase price is required" };
+  }
+
+  const priceNum = parseFloat(purchasePrice);
+  if (isNaN(priceNum) || priceNum <= 0) {
+    return { success: false, error: "Purchase price must be a positive number" };
+  }
+
+  if (!purchaseDate) {
+    return { success: false, error: "Purchase date is required" };
+  }
+
+  if (!platform || platform.trim() === "") {
+    return { success: false, error: "Platform is required" };
+  }
+
+  try {
+    // Find the existing investment and verify ownership
+    const existingInvestment = await prisma.investment.findFirst({
+      where: {
+        id,
+        userId: session.user.id, // Cannot edit other users' investments
+      },
+      include: {
+        asset: true,
+      },
+    });
+
+    if (!existingInvestment) {
+      return { success: false, error: "Investment not found" };
+    }
+
+    // Validate quantity precision based on asset type
+    const decimalPlaces = quantity.includes(".") ? quantity.split(".")[1].length : 0;
+    if (decimalPlaces > existingInvestment.asset.precision) {
+      return {
+        success: false,
+        error: `Quantity can have at most ${existingInvestment.asset.precision} decimal places for ${existingInvestment.asset.symbol}`
+      };
+    }
+
+    // Update the investment
+    const investment = await prisma.investment.update({
+      where: { id },
+      data: {
+        quantity: quantityNum,
+        purchasePrice: priceNum,
+        purchaseCurrency,
+        purchaseDate: new Date(purchaseDate),
+        platform: platform.trim(),
+        notes: notes?.trim() || null,
+      },
+      include: {
+        asset: true,
+      },
+    });
+
+    return {
+      success: true,
+      investment: {
+        id: investment.id,
+        userId: investment.userId,
+        assetId: investment.assetId,
+        quantity: investment.quantity.toString(),
+        purchasePrice: investment.purchasePrice.toString(),
+        purchaseCurrency: investment.purchaseCurrency,
+        purchaseDate: investment.purchaseDate,
+        platform: investment.platform,
+        notes: investment.notes,
+        createdAt: investment.createdAt,
+        asset: {
+          id: investment.asset.id,
+          symbol: investment.asset.symbol,
+          name: investment.asset.name,
+          type: investment.asset.type,
+          precision: investment.asset.precision,
+          isActive: investment.asset.isActive,
+          isGlobal: investment.asset.isGlobal,
+          userId: investment.asset.userId,
+          createdAt: investment.asset.createdAt,
+        },
+      },
+    };
+  } catch (error) {
+    console.error("Error updating investment:", error);
+    return { success: false, error: "Failed to update investment" };
+  }
+}
+
+// ==========================================
 // Delete Investment Types
 // ==========================================
 

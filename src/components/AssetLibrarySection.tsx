@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import AssetLibraryList from "./AssetLibraryList";
 import AddInvestmentModal from "./AddInvestmentModal";
+import EditInvestmentModal from "./EditInvestmentModal";
 import HoldingsView from "./HoldingsView";
 import PortfolioDashboard from "./PortfolioDashboard";
 import { Asset, Investment, CachedPrice, getAssets, getInvestments, GetAssetsInput, fetchAssetPrices, clearPriceCache } from "@/app/investments/actions";
@@ -27,6 +28,7 @@ export default function AssetLibrarySection({
   const [typeFilter, setTypeFilter] = useState<AssetType | "ALL">("ALL");
   const [isLoading, setIsLoading] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingInvestment, setEditingInvestment] = useState<Investment | null>(null);
   const router = useRouter();
 
   const fetchAssets = useCallback(async () => {
@@ -108,6 +110,11 @@ export default function AssetLibrarySection({
 
   const handleAddSuccess = () => {
     setShowAddModal(false);
+    handleRefresh();
+  };
+
+  const handleEditSuccess = () => {
+    setEditingInvestment(null);
     handleRefresh();
   };
 
@@ -212,6 +219,7 @@ export default function AssetLibrarySection({
         onRefresh={handleRefresh}
         onRefreshPrices={handleRefreshPrices}
         onAddInvestment={() => setShowAddModal(true)}
+        onEditInvestment={(investment) => setEditingInvestment(investment)}
       />
 
       {/* Add Investment Modal */}
@@ -220,6 +228,15 @@ export default function AssetLibrarySection({
           initialAssets={assets}
           onClose={() => setShowAddModal(false)}
           onSuccess={handleAddSuccess}
+        />
+      )}
+
+      {/* Edit Investment Modal */}
+      {editingInvestment && (
+        <EditInvestmentModal
+          investment={editingInvestment}
+          onClose={() => setEditingInvestment(null)}
+          onSuccess={handleEditSuccess}
         />
       )}
     </div>
