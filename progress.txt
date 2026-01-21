@@ -215,3 +215,18 @@ Started: Wed Jan 21 00:10:20 -03 2026
   - Spinner animation uses Tailwind animate-spin class
   - Refresh button disabled during loading with opacity-50 and cursor-not-allowed styles
 ---
+
+## 2026-01-21 - US-INV-013
+- What was implemented: Tab Navigation - switch between Holdings, History, and Dividends views
+- Files changed:
+  - src/components/AssetLibrarySection.tsx - Added tab navigation bar with three tabs, conditional content rendering
+- **Learnings for future iterations:**
+  - TabType union: "holdings" | "history" | "dividends" - use lowercase for consistency
+  - Tab state managed via useState, defaults to "holdings" as specified in requirements
+  - Tab bar uses border-b-2 styling for active indicator with transition-colors
+  - Tab nav uses aria-current="page" for accessibility on active tab
+  - overflow-x-auto on nav container enables horizontal scroll on narrow mobile screens
+  - Holdings tab renders existing asset library and HoldingsView components
+  - History and Dividends tabs show placeholder content (future stories US-INV-016-018 and US-INV-020-024)
+  - Tab state is preserved during session (React state persists until page refresh)
+---
