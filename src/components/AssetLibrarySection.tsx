@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import AssetLibraryList from "./AssetLibraryList";
 import AddInvestmentModal from "./AddInvestmentModal";
 import HoldingsView from "./HoldingsView";
-import { Asset, Investment, CachedPrice, getAssets, getInvestments, GetAssetsInput, fetchAssetPrices } from "@/app/investments/actions";
+import { Asset, Investment, CachedPrice, getAssets, getInvestments, GetAssetsInput, fetchAssetPrices, clearPriceCache } from "@/app/investments/actions";
 import { AssetType } from "@/generated/prisma/enums";
 
 interface AssetLibrarySectionProps {
@@ -65,9 +65,15 @@ export default function AssetLibrarySection({
     }
   }, []);
 
-  const fetchPricesData = useCallback(async () => {
+  const fetchPricesData = useCallback(async (forceRefresh: boolean = false) => {
     setPricesLoading(true);
-    const result = await fetchAssetPrices();
+
+    // If force refresh, clear the cache first
+    if (forceRefresh) {
+      await clearPriceCache();
+    }
+
+    const result = await fetchAssetPrices(forceRefresh);
     if (result.success && result.prices) {
       setPrices(result.prices);
       // Find the most recent fetchedAt timestamp
@@ -95,8 +101,8 @@ export default function AssetLibrarySection({
     router.refresh();
   };
 
-  const handleRefreshPrices = () => {
-    fetchPricesData();
+  const handleRefreshPrices = (forceRefresh: boolean = false) => {
+    fetchPricesData(forceRefresh);
   };
 
   const handleAddSuccess = () => {

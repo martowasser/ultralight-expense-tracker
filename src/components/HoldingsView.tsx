@@ -12,7 +12,7 @@ interface HoldingsViewProps {
   pricesLoading?: boolean;
   lastPriceUpdate?: Date | null;
   onRefresh: () => void;
-  onRefreshPrices?: () => void;
+  onRefreshPrices?: (forceRefresh?: boolean) => void;
   onAddInvestment?: () => void;
   onEditInvestment?: (investment: Investment) => void;
 }
@@ -91,13 +91,19 @@ export default function HoldingsView({
   };
 
   const formatSourceName = (source: string) => {
+    // Check if it's a stale cache source (e.g., "binance (cached)")
+    const isCached = source.includes("(cached)");
+    const baseSource = source.replace(" (cached)", "");
+
     const sourceNames: Record<string, string> = {
       binance: "Binance",
       yahoo: "Yahoo Finance",
       coingecko: "CoinGecko",
       manual: "Manual",
     };
-    return sourceNames[source] || source;
+
+    const displayName = sourceNames[baseSource] || baseSource;
+    return isCached ? `${displayName} (stale)` : displayName;
   };
 
   const toggleExpand = (symbol: string) => {
@@ -247,16 +253,28 @@ export default function HoldingsView({
             <div className="flex items-center gap-2 text-xs text-[#a3a3a3]">
               <span>updated {formatLastUpdated(lastPriceUpdate)}</span>
               {onRefreshPrices && (
-                <button
-                  onClick={onRefreshPrices}
-                  disabled={pricesLoading}
-                  className={`px-2 py-1 border border-[#e5e5e5] hover:border-[#a3a3a3] hover:text-[#171717] ${
-                    pricesLoading ? "opacity-50 cursor-not-allowed" : ""
-                  }`}
-                  title="Refresh prices"
-                >
-                  {pricesLoading ? "..." : "refresh"}
-                </button>
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => onRefreshPrices(false)}
+                    disabled={pricesLoading}
+                    className={`px-2 py-1 border border-[#e5e5e5] hover:border-[#a3a3a3] hover:text-[#171717] ${
+                      pricesLoading ? "opacity-50 cursor-not-allowed" : ""
+                    }`}
+                    title="Refresh prices (use cache if fresh)"
+                  >
+                    {pricesLoading ? "..." : "refresh"}
+                  </button>
+                  <button
+                    onClick={() => onRefreshPrices(true)}
+                    disabled={pricesLoading}
+                    className={`px-2 py-1 border border-[#e5e5e5] hover:border-[#a3a3a3] hover:text-[#171717] ${
+                      pricesLoading ? "opacity-50 cursor-not-allowed" : ""
+                    }`}
+                    title="Force refresh prices (clear cache)"
+                  >
+                    {pricesLoading ? "..." : "force"}
+                  </button>
+                </div>
               )}
             </div>
           )}

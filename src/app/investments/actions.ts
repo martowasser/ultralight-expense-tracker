@@ -527,6 +527,7 @@ export interface FetchAssetPricesResult {
   error?: string;
   prices?: CachedPrice[];
   fromCache?: boolean;
+  usedStaleCache?: boolean;
 }
 
 // ==========================================
@@ -536,8 +537,9 @@ export interface FetchAssetPricesResult {
 /**
  * Fetch prices for user's portfolio assets
  * Uses PriceCache to store/retrieve prices with 5-minute TTL
+ * Falls back to stale cache on API failure (graceful degradation)
  */
-export async function fetchAssetPrices(): Promise<FetchAssetPricesResult> {
+export async function fetchAssetPrices(forceRefresh: boolean = false): Promise<FetchAssetPricesResult> {
   const session = await auth();
 
   if (!session?.user?.id) {
@@ -570,53 +572,105 @@ export async function fetchAssetPrices(): Promise<FetchAssetPricesResult> {
 
     // Check cache first (5 minute TTL)
     const cacheExpiry = new Date(Date.now() - 5 * 60 * 1000);
-    const cachedPrices = await prisma.priceCache.findMany({
-      where: {
-        symbol: { in: symbols },
-        fetchedAt: { gte: cacheExpiry },
-      },
+
+    // Get all cached prices (for fallback)
+    const allCachedPrices = await prisma.priceCache.findMany({
+      where: { symbol: { in: symbols } },
     });
 
-    const cachedSymbols = new Set(cachedPrices.map((p) => p.symbol));
+    // Filter for fresh cached prices
+    const freshCachedPrices = forceRefresh
+      ? [] // Skip cache on force refresh
+      : allCachedPrices.filter((p) => p.fetchedAt >= cacheExpiry);
+
+    const cachedSymbols = new Set(freshCachedPrices.map((p) => p.symbol));
     const symbolsToFetch = symbols.filter((s) => !cachedSymbols.has(s));
 
     let freshPrices: PriceData[] = [];
+    let usedStaleCache = false;
 
     // Fetch fresh prices for symbols not in cache
     if (symbolsToFetch.length > 0) {
       const assetsToFetch = symbolsToFetch.map((s) => assetMap.get(s)!);
-      const fetchResult = await fetchPricesFromAPIs(assetsToFetch);
 
-      if (fetchResult.prices.length > 0) {
-        freshPrices = fetchResult.prices;
+      try {
+        const fetchResult = await fetchPricesFromAPIs(assetsToFetch);
 
-        // Update cache with fresh prices (upsert)
-        await Promise.all(
-          freshPrices.map((price) =>
-            prisma.priceCache.upsert({
-              where: { symbol: price.symbol },
-              create: {
-                symbol: price.symbol,
-                price: price.price,
-                change24h: price.change24h,
-                source: price.source,
-                fetchedAt: price.fetchedAt,
-              },
-              update: {
-                price: price.price,
-                change24h: price.change24h,
-                source: price.source,
-                fetchedAt: price.fetchedAt,
-              },
-            })
-          )
+        if (fetchResult.prices.length > 0) {
+          freshPrices = fetchResult.prices;
+
+          // Update cache with fresh prices (upsert)
+          await Promise.all(
+            freshPrices.map((price) =>
+              prisma.priceCache.upsert({
+                where: { symbol: price.symbol },
+                create: {
+                  symbol: price.symbol,
+                  price: price.price,
+                  change24h: price.change24h,
+                  source: price.source,
+                  fetchedAt: price.fetchedAt,
+                },
+                update: {
+                  price: price.price,
+                  change24h: price.change24h,
+                  source: price.source,
+                  fetchedAt: price.fetchedAt,
+                },
+              })
+            )
+          );
+        }
+
+        // Check if any symbols failed to fetch - use stale cache for those
+        const fetchedSymbols = new Set(freshPrices.map((p) => p.symbol));
+        const failedSymbols = symbolsToFetch.filter((s) => !fetchedSymbols.has(s));
+
+        if (failedSymbols.length > 0) {
+          // Get stale cached prices for failed symbols
+          const staleCachedPrices = allCachedPrices.filter(
+            (p) => failedSymbols.includes(p.symbol)
+          );
+
+          if (staleCachedPrices.length > 0) {
+            usedStaleCache = true;
+            // Add stale prices as fresh prices (they'll be merged below)
+            freshPrices = [
+              ...freshPrices,
+              ...staleCachedPrices.map((p) => ({
+                symbol: p.symbol,
+                price: parseFloat(p.price.toString()),
+                change24h: p.change24h ? parseFloat(p.change24h.toString()) : null,
+                source: `${p.source} (cached)`,
+                fetchedAt: p.fetchedAt,
+              })),
+            ];
+          }
+        }
+      } catch (apiError) {
+        // API completely failed - fall back to stale cache for all symbols that needed fetching
+        console.error("Price API error, falling back to stale cache:", apiError);
+
+        const staleCachedPrices = allCachedPrices.filter(
+          (p) => symbolsToFetch.includes(p.symbol)
         );
+
+        if (staleCachedPrices.length > 0) {
+          usedStaleCache = true;
+          freshPrices = staleCachedPrices.map((p) => ({
+            symbol: p.symbol,
+            price: parseFloat(p.price.toString()),
+            change24h: p.change24h ? parseFloat(p.change24h.toString()) : null,
+            source: `${p.source} (cached)`,
+            fetchedAt: p.fetchedAt,
+          }));
+        }
       }
     }
 
     // Combine cached and fresh prices
     const allPrices: CachedPrice[] = [
-      ...cachedPrices.map((p) => ({
+      ...freshCachedPrices.map((p) => ({
         symbol: p.symbol,
         price: p.price.toString(),
         change24h: p.change24h?.toString() ?? null,
@@ -636,6 +690,7 @@ export async function fetchAssetPrices(): Promise<FetchAssetPricesResult> {
       success: true,
       prices: allPrices,
       fromCache: symbolsToFetch.length === 0,
+      usedStaleCache,
     };
   } catch (error) {
     console.error("Error fetching asset prices:", error);
@@ -685,5 +740,147 @@ export async function getCachedPrices(): Promise<FetchAssetPricesResult> {
   } catch (error) {
     console.error("Error getting cached prices:", error);
     return { success: false, error: "Failed to get cached prices" };
+  }
+}
+
+// ==========================================
+// Cache Management Types
+// ==========================================
+
+export interface ClearCacheResult {
+  success: boolean;
+  error?: string;
+  clearedCount?: number;
+}
+
+export interface PriceCacheStats {
+  totalCached: number;
+  freshCount: number;
+  staleCount: number;
+  oldestFetchedAt: Date | null;
+  newestFetchedAt: Date | null;
+  cacheHitRate: number; // Percentage of symbols that have valid cache
+  symbolsCached: string[];
+}
+
+export interface GetCacheStatsResult {
+  success: boolean;
+  error?: string;
+  stats?: PriceCacheStats;
+}
+
+// ==========================================
+// Cache Management Actions
+// ==========================================
+
+/**
+ * Clear price cache for all symbols in user's portfolio
+ * Used when user wants to force a fresh price fetch
+ */
+export async function clearPriceCache(): Promise<ClearCacheResult> {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  try {
+    // Get unique assets from user's investments
+    const investments = await prisma.investment.findMany({
+      where: { userId: session.user.id },
+      select: { asset: { select: { symbol: true } } },
+    });
+
+    if (investments.length === 0) {
+      return { success: true, clearedCount: 0 };
+    }
+
+    const symbols = [...new Set(investments.map((inv) => inv.asset.symbol))];
+
+    // Delete cache entries for these symbols
+    const result = await prisma.priceCache.deleteMany({
+      where: { symbol: { in: symbols } },
+    });
+
+    return {
+      success: true,
+      clearedCount: result.count,
+    };
+  } catch (error) {
+    console.error("Error clearing price cache:", error);
+    return { success: false, error: "Failed to clear price cache" };
+  }
+}
+
+/**
+ * Get cache statistics for monitoring
+ * Returns info about cached prices, freshness, and hit rate
+ */
+export async function getPriceCacheStats(): Promise<GetCacheStatsResult> {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  try {
+    // Get unique assets from user's investments
+    const investments = await prisma.investment.findMany({
+      where: { userId: session.user.id },
+      select: { asset: { select: { symbol: true } } },
+    });
+
+    if (investments.length === 0) {
+      return {
+        success: true,
+        stats: {
+          totalCached: 0,
+          freshCount: 0,
+          staleCount: 0,
+          oldestFetchedAt: null,
+          newestFetchedAt: null,
+          cacheHitRate: 0,
+          symbolsCached: [],
+        },
+      };
+    }
+
+    const symbols = [...new Set(investments.map((inv) => inv.asset.symbol))];
+    const totalSymbols = symbols.length;
+
+    // Get all cached prices for user's symbols
+    const cachedPrices = await prisma.priceCache.findMany({
+      where: { symbol: { in: symbols } },
+      orderBy: { fetchedAt: "asc" },
+    });
+
+    // Calculate freshness (5 minute TTL)
+    const cacheExpiry = new Date(Date.now() - 5 * 60 * 1000);
+    const freshCount = cachedPrices.filter((p) => p.fetchedAt >= cacheExpiry).length;
+    const staleCount = cachedPrices.length - freshCount;
+
+    // Calculate timestamps
+    const oldestFetchedAt = cachedPrices.length > 0 ? cachedPrices[0].fetchedAt : null;
+    const newestFetchedAt =
+      cachedPrices.length > 0 ? cachedPrices[cachedPrices.length - 1].fetchedAt : null;
+
+    // Calculate cache hit rate (percentage of portfolio symbols that have any cache)
+    const cacheHitRate = totalSymbols > 0 ? (cachedPrices.length / totalSymbols) * 100 : 0;
+
+    return {
+      success: true,
+      stats: {
+        totalCached: cachedPrices.length,
+        freshCount,
+        staleCount,
+        oldestFetchedAt,
+        newestFetchedAt,
+        cacheHitRate: Math.round(cacheHitRate * 100) / 100,
+        symbolsCached: cachedPrices.map((p) => p.symbol),
+      },
+    };
+  } catch (error) {
+    console.error("Error getting cache stats:", error);
+    return { success: false, error: "Failed to get cache stats" };
   }
 }
