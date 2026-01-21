@@ -3,9 +3,12 @@
 import React, { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Investment, CachedPrice, Asset, HoldingDividendYield } from "@/app/investments/actions";
-import { AssetType } from "@/generated/prisma/enums";
+import { AssetType, Currency } from "@/generated/prisma/enums";
+import { CURRENCY_INFO } from "@/app/investments/constants";
 import DeleteInvestmentModal from "./DeleteInvestmentModal";
 import ManualPriceModal from "./ManualPriceModal";
+
+type CurrencyDisplayMode = "original" | "display";
 
 // Asset type icon colors (Tailwind needs full class names, not dynamic construction)
 const assetTypeColors: Record<AssetType, string> = {
@@ -47,6 +50,7 @@ interface HoldingsViewProps {
   dividendYields?: HoldingDividendYield[];
   pricesLoading?: boolean;
   lastPriceUpdate?: Date | null;
+  displayCurrency?: Currency;
   onRefresh: () => void;
   onRefreshPrices?: (forceRefresh?: boolean) => void;
   onAddInvestment?: () => void;
@@ -78,6 +82,9 @@ interface Holding {
   isCustom: boolean;
   // Dividend yield
   dividendYield?: number | null;
+  // Currency tracking
+  primaryCurrency: Currency;  // The most common purchase currency among lots
+  hasMixedCurrencies: boolean;  // True if lots have different currencies
 }
 
 export default function HoldingsView({
@@ -86,6 +93,7 @@ export default function HoldingsView({
   dividendYields = [],
   pricesLoading = false,
   lastPriceUpdate,
+  displayCurrency = "USD",
   onRefresh,
   onRefreshPrices,
   onAddInvestment,
@@ -97,7 +105,13 @@ export default function HoldingsView({
   const [typeFilter, setTypeFilter] = useState<AssetType | "ALL">("ALL");
   const [platformFilter, setPlatformFilter] = useState<string>("ALL");
   const [manualPriceAsset, setManualPriceAsset] = useState<{ asset: Asset; price?: CachedPrice } | null>(null);
+  const [currencyMode, setCurrencyMode] = useState<CurrencyDisplayMode>("original");
   const router = useRouter();
+
+  // Get currency symbol for display
+  const getCurrencySymbol = (currency: Currency): string => {
+    return CURRENCY_INFO[currency]?.symbol || currency;
+  };
 
   const handleDeleteSuccess = () => {
     setDeleteInvestmentId(null);
@@ -250,6 +264,8 @@ export default function HoldingsView({
           weightedAvgPrice: 0, // Will be calculated below
           lots: [investment],
           isCustom: isCustomAsset(investment),
+          primaryCurrency: investment.purchaseCurrency as Currency,
+          hasMixedCurrencies: false,
         });
       }
     });
@@ -257,6 +273,26 @@ export default function HoldingsView({
     // Calculate weighted average price and price data for each holding
     holdingsMap.forEach((holding) => {
       holding.weightedAvgPrice = holding.totalCost / holding.totalQuantity;
+
+      // Check if lots have mixed currencies
+      const currencies = new Set(holding.lots.map((lot) => lot.purchaseCurrency));
+      holding.hasMixedCurrencies = currencies.size > 1;
+
+      // Determine primary currency (most common among lots, or first if tied)
+      if (holding.hasMixedCurrencies) {
+        const currencyCount = new Map<string, number>();
+        holding.lots.forEach((lot) => {
+          const count = currencyCount.get(lot.purchaseCurrency) || 0;
+          currencyCount.set(lot.purchaseCurrency, count + 1);
+        });
+        let maxCount = 0;
+        currencyCount.forEach((count, currency) => {
+          if (count > maxCount) {
+            maxCount = count;
+            holding.primaryCurrency = currency as Currency;
+          }
+        });
+      }
 
       // Add price data if available
       const priceData = priceMap.get(holding.symbol);
@@ -430,6 +466,32 @@ export default function HoldingsView({
               ))}
             </select>
           )}
+
+          {/* Currency Display Mode Toggle */}
+          <div className="flex gap-1 ml-auto">
+            <button
+              onClick={() => setCurrencyMode("original")}
+              className={`px-2 py-1.5 text-xs min-h-[32px] border ${
+                currencyMode === "original"
+                  ? "bg-[#171717] text-[#fafafa] border-[#171717]"
+                  : "bg-white text-[#737373] border-[#e5e5e5] hover:text-[#171717]"
+              }`}
+              title="Show values in original purchase currency"
+            >
+              original
+            </button>
+            <button
+              onClick={() => setCurrencyMode("display")}
+              className={`px-2 py-1.5 text-xs min-h-[32px] border ${
+                currencyMode === "display"
+                  ? "bg-[#171717] text-[#fafafa] border-[#171717]"
+                  : "bg-white text-[#737373] border-[#e5e5e5] hover:text-[#171717]"
+              }`}
+              title={`Show values in ${displayCurrency}`}
+            >
+              {getCurrencySymbol(displayCurrency)} {displayCurrency}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -472,7 +534,9 @@ export default function HoldingsView({
                 {holdings.map((holding) => {
                   const isExpanded = expandedHoldings.has(holding.symbol);
                   const hasMultipleLots = holding.lots.length > 1;
-                  const primaryCurrency = holding.lots[0].purchaseCurrency;
+                  // Determine which currency to show based on mode
+                  const showCurrency = currencyMode === "display" ? displayCurrency : holding.primaryCurrency;
+                  const showCurrencySymbol = getCurrencySymbol(showCurrency);
 
                   return (
                     <React.Fragment key={holding.symbol}>
@@ -492,6 +556,11 @@ export default function HoldingsView({
                                 {holding.isCustom && (
                                   <span className="text-xs text-blue-600 px-1.5 py-0.5 bg-blue-50 rounded">
                                     custom
+                                  </span>
+                                )}
+                                {holding.hasMixedCurrencies && (
+                                  <span className="text-xs text-amber-600 px-1.5 py-0.5 bg-amber-50 rounded" title="Lots have different purchase currencies">
+                                    mixed
                                   </span>
                                 )}
                                 {hasMultipleLots && (
@@ -518,13 +587,20 @@ export default function HoldingsView({
                           {holding.totalQuantity.toLocaleString(undefined, { maximumFractionDigits: 6 })}
                         </td>
                         <td className="px-4 py-3 text-right text-[#737373]">
-                          {primaryCurrency} {holding.weightedAvgPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          <div>
+                            {showCurrencySymbol} {holding.weightedAvgPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {holding.hasMixedCurrencies && currencyMode === "original" && (
+                              <span className="block text-xs text-amber-600">mixed currencies</span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-4 py-3 text-right">
                           {holding.currentPrice !== undefined ? (
                             <div>
                               <div className="flex items-center justify-end gap-1">
-                                <span className="text-[#171717]">${formatPrice(holding.currentPrice)}</span>
+                                <span className="text-[#171717]">
+                                  {currencyMode === "display" ? getCurrencySymbol(displayCurrency) : "$"}{formatPrice(holding.currentPrice)}
+                                </span>
                                 {holding.isCustom && holding.priceSource === "manual" && (
                                   <button
                                     type="button"
@@ -570,13 +646,13 @@ export default function HoldingsView({
                         </td>
                         <td className="px-4 py-3 text-right text-[#171717] font-medium">
                           {holding.currentValue !== undefined
-                            ? `$${holding.currentValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                            ? `${currencyMode === "display" ? getCurrencySymbol(displayCurrency) : "$"}${holding.currentValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                             : "—"}
                         </td>
                         <td className="px-4 py-3 text-right">
                           {holding.gainLoss !== undefined && holding.gainLossPercent !== undefined ? (
                             <div className={holding.gainLoss >= 0 ? "text-green-700" : "text-red-700"}>
-                              <span>{holding.gainLoss >= 0 ? "+" : ""}${holding.gainLoss.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                              <span>{holding.gainLoss >= 0 ? "+" : ""}{currencyMode === "display" ? getCurrencySymbol(displayCurrency) : "$"}{Math.abs(holding.gainLoss).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                               <span className="block text-xs">
                                 ({holding.gainLoss >= 0 ? "+" : ""}{holding.gainLossPercent.toFixed(2)}%)
                               </span>
@@ -700,7 +776,9 @@ export default function HoldingsView({
             {holdings.map((holding) => {
               const isExpanded = expandedHoldings.has(holding.symbol);
               const hasMultipleLots = holding.lots.length > 1;
-              const primaryCurrency = holding.lots[0].purchaseCurrency;
+              // Determine which currency to show based on mode
+              const showCurrency = currencyMode === "display" ? displayCurrency : holding.primaryCurrency;
+              const showCurrencySymbol = getCurrencySymbol(showCurrency);
 
               return (
                 <div key={holding.symbol} className="bg-white">
@@ -727,6 +805,11 @@ export default function HoldingsView({
                               custom
                             </span>
                           )}
+                          {holding.hasMixedCurrencies && (
+                            <span className="text-xs text-amber-600 px-1.5 py-0.5 bg-amber-50 rounded" title="Lots have different purchase currencies">
+                              mixed
+                            </span>
+                          )}
                           {hasMultipleLots && (
                             <span className="text-xs text-[#fafafa] px-1.5 py-0.5 bg-[#737373] rounded">
                               {holding.lots.length} lots
@@ -742,7 +825,7 @@ export default function HoldingsView({
                           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
                             <div className="flex items-center gap-1">
                               <span className="text-[#171717] font-medium">
-                                ${formatPrice(holding.currentPrice)}
+                                {currencyMode === "display" ? getCurrencySymbol(displayCurrency) : "$"}{formatPrice(holding.currentPrice)}
                               </span>
                               {holding.isCustom && holding.priceSource === "manual" && (
                                 <button
@@ -803,14 +886,15 @@ export default function HoldingsView({
                         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#737373]">
                           <span>qty: {holding.totalQuantity.toLocaleString(undefined, { maximumFractionDigits: 6 })}</span>
                           <span>
-                            avg: {primaryCurrency} {holding.weightedAvgPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            avg: {showCurrencySymbol} {holding.weightedAvgPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
                           <span>
-                            cost: {primaryCurrency} {holding.totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            cost: {showCurrencySymbol} {holding.totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {holding.hasMixedCurrencies && currencyMode === "original" && <span className="text-amber-600"> (mixed)</span>}
                           </span>
                           {holding.currentValue !== undefined && (
                             <span>
-                              value: ${holding.currentValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              value: {currencyMode === "display" ? getCurrencySymbol(displayCurrency) : "$"}{holding.currentValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </span>
                           )}
                           {holding.gainLoss !== undefined && holding.gainLossPercent !== undefined && (
@@ -819,7 +903,7 @@ export default function HoldingsView({
                                 holding.gainLoss >= 0 ? "text-green-700" : "text-red-700"
                               }
                             >
-                              {holding.gainLoss >= 0 ? "+" : ""}${holding.gainLoss.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ({holding.gainLoss >= 0 ? "+" : ""}{holding.gainLossPercent.toFixed(2)}%)
+                              {holding.gainLoss >= 0 ? "+" : ""}{currencyMode === "display" ? getCurrencySymbol(displayCurrency) : "$"}{Math.abs(holding.gainLoss).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ({holding.gainLoss >= 0 ? "+" : ""}{holding.gainLossPercent.toFixed(2)}%)
                             </span>
                           )}
                           {holding.dividendYield !== undefined && holding.dividendYield !== null && (

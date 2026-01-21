@@ -8,25 +8,11 @@ import {
   updateDisplayCurrency,
   updatePreferredCurrencies,
 } from "@/app/investments/actions";
-import { CURRENCIES } from "@/app/investments/constants";
+import { CURRENCIES, CURRENCY_INFO } from "@/app/investments/constants";
 
 interface UserCurrencySettingsProps {
   onSettingsChange?: (settings: UserSettings) => void;
 }
-
-// Currency display info
-const CURRENCY_INFO: Record<string, { name: string; symbol: string }> = {
-  USD: { name: "US Dollar", symbol: "$" },
-  EUR: { name: "Euro", symbol: "€" },
-  GBP: { name: "British Pound", symbol: "£" },
-  JPY: { name: "Japanese Yen", symbol: "¥" },
-  CAD: { name: "Canadian Dollar", symbol: "C$" },
-  AUD: { name: "Australian Dollar", symbol: "A$" },
-  CHF: { name: "Swiss Franc", symbol: "Fr" },
-  CNY: { name: "Chinese Yuan", symbol: "¥" },
-  ARS: { name: "Argentine Peso", symbol: "$" },
-  BRL: { name: "Brazilian Real", symbol: "R$" },
-};
 
 export default function UserCurrencySettings({ onSettingsChange }: UserCurrencySettingsProps) {
   const [settings, setSettings] = useState<UserSettings | null>(null);

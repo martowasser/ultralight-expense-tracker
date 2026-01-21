@@ -440,6 +440,7 @@ export default function AssetLibrarySection({
             dividendYields={dividendYields}
             pricesLoading={pricesLoading}
             lastPriceUpdate={lastPriceUpdate}
+            displayCurrency={displayCurrency}
             onRefresh={handleRefresh}
             onRefreshPrices={handleRefreshPrices}
             onAddInvestment={() => setShowAddModal(true)}
