@@ -309,3 +309,18 @@ model PriceCache {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
+
+model ExchangeRateCache {
+  id            String   @id @default(cuid())
+  baseCurrency  String   // Base currency (e.g., "USD")
+  targetCurrency String  // Target currency (e.g., "EUR")
+  rate          Decimal  @db.Decimal(18, 8)  // Exchange rate
+  source        String   // Data source (e.g., "exchangerate.host", "openexchangerates")
+  fetchedAt     DateTime // When the rate was fetched
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([baseCurrency, targetCurrency])
+  @@index([baseCurrency])
+  @@index([fetchedAt])
+}

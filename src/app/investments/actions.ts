@@ -4,6 +4,11 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { AssetType, Currency, DividendType } from "@/generated/prisma/enums";
 import { fetchPrices as fetchPricesFromAPIs, PriceData } from "@/lib/priceService";
+import {
+  fetchExchangeRates as fetchExchangeRatesFromAPIs,
+  SUPPORTED_CURRENCIES,
+  ExchangeRateMap,
+} from "@/lib/exchangeRateService";
 
 // ==========================================
 // Asset Library Types
@@ -2787,5 +2792,347 @@ export async function createDividend(input: CreateDividendInput): Promise<Create
   } catch (error) {
     console.error("Error creating dividend:", error);
     return { success: false, error: "Failed to create dividend" };
+  }
+}
+
+// ==========================================
+// Exchange Rate Types
+// ==========================================
+
+export interface CachedExchangeRate {
+  baseCurrency: string;
+  targetCurrency: string;
+  rate: string;
+  source: string;
+  fetchedAt: Date;
+}
+
+export interface FetchExchangeRatesResult {
+  success: boolean;
+  error?: string;
+  rates?: CachedExchangeRate[];
+  fromCache?: boolean;
+  usedStaleCache?: boolean;
+}
+
+export interface ExchangeRateCacheStats {
+  totalCached: number;
+  freshCount: number;
+  staleCount: number;
+  oldestFetchedAt: Date | null;
+  newestFetchedAt: Date | null;
+  baseCurrenciesCached: string[];
+}
+
+export interface GetExchangeRateCacheStatsResult {
+  success: boolean;
+  error?: string;
+  stats?: ExchangeRateCacheStats;
+}
+
+// Exchange rate cache TTL: 1 hour (in milliseconds)
+const EXCHANGE_RATE_CACHE_TTL = 60 * 60 * 1000;
+
+// ==========================================
+// Exchange Rate Actions
+// ==========================================
+
+/**
+ * Fetch exchange rates for a base currency
+ * Uses ExchangeRateCache with 1-hour TTL
+ * Falls back to stale cache on API failure (graceful degradation)
+ */
+export async function fetchExchangeRates(
+  baseCurrency: string = "USD",
+  forceRefresh: boolean = false
+): Promise<FetchExchangeRatesResult> {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  try {
+    const cacheExpiry = new Date(Date.now() - EXCHANGE_RATE_CACHE_TTL);
+
+    // Get all cached rates for the base currency (for fallback)
+    const allCachedRates = await prisma.exchangeRateCache.findMany({
+      where: { baseCurrency },
+    });
+
+    // Filter for fresh cached rates
+    const freshCachedRates = forceRefresh
+      ? [] // Skip cache on force refresh
+      : allCachedRates.filter((r) => r.fetchedAt >= cacheExpiry);
+
+    // If we have all rates fresh in cache, return them
+    if (freshCachedRates.length === SUPPORTED_CURRENCIES.length) {
+      console.log(`Exchange rates for ${baseCurrency} served from cache`);
+      return {
+        success: true,
+        rates: freshCachedRates.map((r) => ({
+          baseCurrency: r.baseCurrency,
+          targetCurrency: r.targetCurrency,
+          rate: r.rate.toString(),
+          source: r.source,
+          fetchedAt: r.fetchedAt,
+        })),
+        fromCache: true,
+      };
+    }
+
+    // Need to fetch fresh rates
+    let usedStaleCache = false;
+
+    try {
+      const fetchResult = await fetchExchangeRatesFromAPIs(baseCurrency);
+
+      if (fetchResult.success && Object.keys(fetchResult.rates).length > 0) {
+        // Update cache with fresh rates (upsert)
+        await Promise.all(
+          Object.entries(fetchResult.rates).map(([targetCurrency, rate]) =>
+            prisma.exchangeRateCache.upsert({
+              where: {
+                baseCurrency_targetCurrency: { baseCurrency, targetCurrency },
+              },
+              create: {
+                baseCurrency,
+                targetCurrency,
+                rate,
+                source: fetchResult.source,
+                fetchedAt: fetchResult.fetchedAt,
+              },
+              update: {
+                rate,
+                source: fetchResult.source,
+                fetchedAt: fetchResult.fetchedAt,
+              },
+            })
+          )
+        );
+
+        // Return fresh rates
+        const freshRates: CachedExchangeRate[] = Object.entries(
+          fetchResult.rates
+        ).map(([targetCurrency, rate]) => ({
+          baseCurrency,
+          targetCurrency,
+          rate: rate.toString(),
+          source: fetchResult.source,
+          fetchedAt: fetchResult.fetchedAt,
+        }));
+
+        console.log(
+          `Exchange rates for ${baseCurrency}: ${freshRates.length} rates fetched from ${fetchResult.source}`
+        );
+
+        return {
+          success: true,
+          rates: freshRates,
+          fromCache: false,
+        };
+      }
+
+      // API failed but returned - try stale cache
+      throw new Error("API returned no rates");
+    } catch (apiError) {
+      // API failed - fall back to stale cache
+      console.error(
+        "Exchange rate API error, falling back to stale cache:",
+        apiError
+      );
+
+      if (allCachedRates.length > 0) {
+        usedStaleCache = true;
+        return {
+          success: true,
+          rates: allCachedRates.map((r) => ({
+            baseCurrency: r.baseCurrency,
+            targetCurrency: r.targetCurrency,
+            rate: r.rate.toString(),
+            source: `${r.source} (cached)`,
+            fetchedAt: r.fetchedAt,
+          })),
+          fromCache: true,
+          usedStaleCache,
+        };
+      }
+
+      // No cache available
+      return {
+        success: false,
+        error: "Failed to fetch exchange rates and no cache available",
+      };
+    }
+  } catch (error) {
+    console.error("Error fetching exchange rates:", error);
+    return { success: false, error: "Failed to fetch exchange rates" };
+  }
+}
+
+/**
+ * Get cached exchange rates without fetching new ones
+ */
+export async function getCachedExchangeRates(
+  baseCurrency: string = "USD"
+): Promise<FetchExchangeRatesResult> {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  try {
+    const cachedRates = await prisma.exchangeRateCache.findMany({
+      where: { baseCurrency },
+    });
+
+    return {
+      success: true,
+      rates: cachedRates.map((r) => ({
+        baseCurrency: r.baseCurrency,
+        targetCurrency: r.targetCurrency,
+        rate: r.rate.toString(),
+        source: r.source,
+        fetchedAt: r.fetchedAt,
+      })),
+      fromCache: true,
+    };
+  } catch (error) {
+    console.error("Error getting cached exchange rates:", error);
+    return { success: false, error: "Failed to get cached exchange rates" };
+  }
+}
+
+/**
+ * Clear exchange rate cache for a specific base currency or all currencies
+ */
+export async function clearExchangeRateCache(
+  baseCurrency?: string
+): Promise<{ success: boolean; error?: string; deletedCount?: number }> {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  try {
+    const whereClause = baseCurrency ? { baseCurrency } : {};
+    const result = await prisma.exchangeRateCache.deleteMany({
+      where: whereClause,
+    });
+
+    console.log(
+      `Cleared ${result.count} exchange rate cache entries${baseCurrency ? ` for ${baseCurrency}` : ""}`
+    );
+
+    return { success: true, deletedCount: result.count };
+  } catch (error) {
+    console.error("Error clearing exchange rate cache:", error);
+    return { success: false, error: "Failed to clear exchange rate cache" };
+  }
+}
+
+/**
+ * Get exchange rate cache statistics for monitoring
+ */
+export async function getExchangeRateCacheStats(): Promise<GetExchangeRateCacheStatsResult> {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  try {
+    const cacheExpiry = new Date(Date.now() - EXCHANGE_RATE_CACHE_TTL);
+
+    const allCachedRates = await prisma.exchangeRateCache.findMany({
+      orderBy: { fetchedAt: "asc" },
+    });
+
+    const freshCount = allCachedRates.filter(
+      (r) => r.fetchedAt >= cacheExpiry
+    ).length;
+    const staleCount = allCachedRates.length - freshCount;
+
+    // Get unique base currencies
+    const baseCurrenciesCached = [
+      ...new Set(allCachedRates.map((r) => r.baseCurrency)),
+    ];
+
+    return {
+      success: true,
+      stats: {
+        totalCached: allCachedRates.length,
+        freshCount,
+        staleCount,
+        oldestFetchedAt: allCachedRates[0]?.fetchedAt ?? null,
+        newestFetchedAt:
+          allCachedRates[allCachedRates.length - 1]?.fetchedAt ?? null,
+        baseCurrenciesCached,
+      },
+    };
+  } catch (error) {
+    console.error("Error getting exchange rate cache stats:", error);
+    return { success: false, error: "Failed to get cache stats" };
+  }
+}
+
+/**
+ * Get a single exchange rate between two currencies
+ * Fetches rates if not cached or stale
+ */
+export async function getExchangeRate(
+  fromCurrency: string,
+  toCurrency: string
+): Promise<{ success: boolean; error?: string; rate?: number; source?: string }> {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  // Same currency - rate is 1
+  if (fromCurrency === toCurrency) {
+    return { success: true, rate: 1, source: "identity" };
+  }
+
+  try {
+    // Fetch rates with USD as base (most common)
+    const result = await fetchExchangeRates("USD");
+
+    if (!result.success || !result.rates) {
+      return { success: false, error: result.error || "Failed to fetch rates" };
+    }
+
+    // Build rate map
+    const rateMap: ExchangeRateMap = {};
+    for (const rate of result.rates) {
+      rateMap[rate.targetCurrency] = parseFloat(rate.rate);
+    }
+
+    // Calculate conversion rate
+    const fromRate = fromCurrency === "USD" ? 1 : rateMap[fromCurrency];
+    const toRate = toCurrency === "USD" ? 1 : rateMap[toCurrency];
+
+    if (fromRate === undefined || toRate === undefined) {
+      return {
+        success: false,
+        error: `Exchange rate not available for ${fromCurrency} or ${toCurrency}`,
+      };
+    }
+
+    // Calculate: amount in fromCurrency -> USD -> toCurrency
+    // rate = toRate / fromRate
+    const rate = toRate / fromRate;
+
+    return {
+      success: true,
+      rate,
+      source: result.rates[0]?.source || "unknown",
+    };
+  } catch (error) {
+    console.error("Error getting exchange rate:", error);
+    return { success: false, error: "Failed to get exchange rate" };
   }
 }
