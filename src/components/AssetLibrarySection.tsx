@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import AssetLibraryList from "./AssetLibraryList";
 import AddInvestmentModal from "./AddInvestmentModal";
 import HoldingsView from "./HoldingsView";
+import PortfolioDashboard from "./PortfolioDashboard";
 import { Asset, Investment, CachedPrice, getAssets, getInvestments, GetAssetsInput, fetchAssetPrices, clearPriceCache } from "@/app/investments/actions";
 import { AssetType } from "@/generated/prisma/enums";
 
@@ -121,6 +122,13 @@ export default function AssetLibrarySection({
           + add investment
         </button>
       </div>
+
+      {/* Portfolio Dashboard */}
+      <PortfolioDashboard
+        investments={investments}
+        prices={prices}
+        displayCurrency="USD"
+      />
 
       <div className="flex flex-col gap-4">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
