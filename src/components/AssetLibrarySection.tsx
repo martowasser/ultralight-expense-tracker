@@ -4,17 +4,21 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import AssetLibraryList from "./AssetLibraryList";
 import AddInvestmentModal from "./AddInvestmentModal";
-import { Asset, getAssets, GetAssetsInput } from "@/app/investments/actions";
+import InvestmentsList from "./InvestmentsList";
+import { Asset, Investment, getAssets, getInvestments, GetAssetsInput } from "@/app/investments/actions";
 import { AssetType } from "@/generated/prisma/enums";
 
 interface AssetLibrarySectionProps {
   initialAssets: Asset[];
+  initialInvestments: Investment[];
 }
 
 export default function AssetLibrarySection({
   initialAssets,
+  initialInvestments,
 }: AssetLibrarySectionProps) {
   const [assets, setAssets] = useState<Asset[]>(initialAssets);
+  const [investments, setInvestments] = useState<Investment[]>(initialInvestments);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<AssetType | "ALL">("ALL");
   const [isLoading, setIsLoading] = useState(false);
@@ -51,8 +55,16 @@ export default function AssetLibrarySection({
     return () => clearTimeout(timeoutId);
   }, [fetchAssets]);
 
+  const fetchInvestments = useCallback(async () => {
+    const result = await getInvestments();
+    if (result.success && result.investments) {
+      setInvestments(result.investments);
+    }
+  }, []);
+
   const handleRefresh = () => {
     fetchAssets();
+    fetchInvestments();
     router.refresh();
   };
 
@@ -145,6 +157,9 @@ export default function AssetLibrarySection({
       ) : (
         <AssetLibraryList assets={assets} onRefresh={handleRefresh} />
       )}
+
+      {/* User's Investments */}
+      <InvestmentsList investments={investments} onRefresh={handleRefresh} />
 
       {/* Add Investment Modal */}
       {showAddModal && (
