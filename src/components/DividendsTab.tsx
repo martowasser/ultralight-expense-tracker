@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { Investment, Dividend, getDividends } from "@/app/investments/actions";
+import { Investment, Dividend, getDividends, getDividendSummary, DividendSummary as DividendSummaryType } from "@/app/investments/actions";
 import { DIVIDEND_TYPES } from "@/app/investments/constants";
 import { DividendType } from "@/generated/prisma/enums";
 import RecordDividendModal from "./RecordDividendModal";
+import DividendSummary from "./DividendSummary";
 
 interface DividendsTabProps {
   investments: Investment[];
@@ -42,6 +43,8 @@ export default function DividendsTab({ investments, onRefresh }: DividendsTabPro
   const [showRecordModal, setShowRecordModal] = useState(false);
   const [dividends, setDividends] = useState<Dividend[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [summary, setSummary] = useState<DividendSummaryType | null>(null);
+  const [isSummaryLoading, setIsSummaryLoading] = useState(true);
 
   // Filter states
   const [symbolFilter, setSymbolFilter] = useState("");
@@ -60,6 +63,20 @@ export default function DividendsTab({ investments, onRefresh }: DividendsTabPro
     });
     return Array.from(symbols).sort();
   }, [investments]);
+
+  // Fetch dividend summary on mount
+  useEffect(() => {
+    async function fetchSummary() {
+      setIsSummaryLoading(true);
+      const result = await getDividendSummary();
+      if (result.success && result.summary) {
+        setSummary(result.summary);
+      }
+      setIsSummaryLoading(false);
+    }
+
+    fetchSummary();
+  }, []);
 
   // Fetch dividends when filters change
   useEffect(() => {
@@ -94,6 +111,12 @@ export default function DividendsTab({ investments, onRefresh }: DividendsTabPro
     }).then((result) => {
       if (result.success && result.dividends) {
         setDividends(result.dividends);
+      }
+    });
+    // Refetch summary to update metrics
+    getDividendSummary().then((result) => {
+      if (result.success && result.summary) {
+        setSummary(result.summary);
       }
     });
     onRefresh();
@@ -131,6 +154,11 @@ export default function DividendsTab({ investments, onRefresh }: DividendsTabPro
           + record dividend
         </button>
       </div>
+
+      {/* Dividend Summary */}
+      {hasInvestments && (
+        <DividendSummary summary={summary} isLoading={isSummaryLoading} />
+      )}
 
       {/* Filter Controls */}
       {hasInvestments && (

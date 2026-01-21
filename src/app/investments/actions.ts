@@ -2180,6 +2180,129 @@ export async function getDividends(input?: GetDividendsInput): Promise<GetDivide
   }
 }
 
+// ==========================================
+// Dividend Summary Types
+// ==========================================
+
+export interface DividendSummaryByType {
+  regular: number;
+  special: number;
+  capitalGain: number;
+}
+
+export interface DividendSummary {
+  ytdTotal: number;
+  ytdByType: DividendSummaryByType;
+  thisMonthTotal: number;
+  thisMonthByType: DividendSummaryByType;
+  lastYearTotal: number;
+  lastYearByType: DividendSummaryByType;
+  displayCurrency: Currency;
+}
+
+export interface GetDividendSummaryResult {
+  success: boolean;
+  error?: string;
+  summary?: DividendSummary;
+}
+
+// ==========================================
+// Dividend Summary Action
+// ==========================================
+
+/**
+ * Get dividend summary metrics
+ * Returns YTD total, this month total, and last year total with breakdown by type
+ * All amounts are returned in USD (display currency)
+ */
+export async function getDividendSummary(): Promise<GetDividendSummaryResult> {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  try {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+    const lastYear = currentYear - 1;
+
+    // YTD: January 1st of current year to now
+    const ytdStart = new Date(currentYear, 0, 1);
+
+    // This month: First day of current month to now
+    const thisMonthStart = new Date(currentYear, currentMonth, 1);
+
+    // Last year: January 1st to December 31st of last year
+    const lastYearStart = new Date(lastYear, 0, 1);
+    const lastYearEnd = new Date(lastYear, 11, 31, 23, 59, 59, 999);
+
+    // Fetch all dividends for the user that fall within any of these periods
+    // Get from last year start to now to cover all needed periods
+    const dividends = await prisma.dividend.findMany({
+      where: {
+        userId: session.user.id,
+        paymentDate: {
+          gte: lastYearStart,
+        },
+      },
+    });
+
+    // Initialize summary values
+    const ytdByType: DividendSummaryByType = { regular: 0, special: 0, capitalGain: 0 };
+    const thisMonthByType: DividendSummaryByType = { regular: 0, special: 0, capitalGain: 0 };
+    const lastYearByType: DividendSummaryByType = { regular: 0, special: 0, capitalGain: 0 };
+
+    // Process each dividend
+    dividends.forEach((dividend) => {
+      const amount = parseFloat(dividend.amount.toString());
+      const paymentDate = new Date(dividend.paymentDate);
+      const typeKey = dividend.type === DividendType.REGULAR
+        ? "regular"
+        : dividend.type === DividendType.SPECIAL
+          ? "special"
+          : "capitalGain";
+
+      // Check YTD (current year)
+      if (paymentDate >= ytdStart && paymentDate <= now) {
+        ytdByType[typeKey] += amount;
+
+        // Check this month
+        if (paymentDate >= thisMonthStart && paymentDate <= now) {
+          thisMonthByType[typeKey] += amount;
+        }
+      }
+
+      // Check last year
+      if (paymentDate >= lastYearStart && paymentDate <= lastYearEnd) {
+        lastYearByType[typeKey] += amount;
+      }
+    });
+
+    // Calculate totals
+    const ytdTotal = ytdByType.regular + ytdByType.special + ytdByType.capitalGain;
+    const thisMonthTotal = thisMonthByType.regular + thisMonthByType.special + thisMonthByType.capitalGain;
+    const lastYearTotal = lastYearByType.regular + lastYearByType.special + lastYearByType.capitalGain;
+
+    return {
+      success: true,
+      summary: {
+        ytdTotal,
+        ytdByType,
+        thisMonthTotal,
+        thisMonthByType,
+        lastYearTotal,
+        lastYearByType,
+        displayCurrency: Currency.USD,
+      },
+    };
+  } catch (error) {
+    console.error("Error getting dividend summary:", error);
+    return { success: false, error: "Failed to get dividend summary" };
+  }
+}
+
 /**
  * Create a new dividend record
  */
