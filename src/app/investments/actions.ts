@@ -1235,6 +1235,355 @@ export async function getCustomAssetsWithPrices(): Promise<GetCustomAssetsWithPr
   }
 }
 
+// ==========================================
+// Portfolio Snapshot Types
+// ==========================================
+
+export interface HoldingSnapshot {
+  symbol: string;
+  assetType: AssetType;
+  quantity: string;
+  avgPrice: string;
+  currentPrice: string | null;
+  value: string | null;
+  costBasis: string;
+  gainLoss: string | null;
+  gainLossPercent: string | null;
+}
+
+export interface PortfolioSnapshot {
+  id: string;
+  userId: string;
+  snapshotDate: Date;
+  totalValue: string;
+  costBasis: string;
+  cryptoValue: string;
+  stockValue: string;
+  holdings: HoldingSnapshot[];
+  currency: Currency;
+  createdAt: Date;
+}
+
+export interface CaptureSnapshotResult {
+  success: boolean;
+  error?: string;
+  snapshot?: PortfolioSnapshot;
+  alreadyExists?: boolean;
+}
+
+export interface GetSnapshotsInput {
+  startDate?: string;
+  endDate?: string;
+  limit?: number;
+}
+
+export interface GetSnapshotsResult {
+  success: boolean;
+  error?: string;
+  snapshots?: PortfolioSnapshot[];
+}
+
+// ==========================================
+// Portfolio Snapshot Actions
+// ==========================================
+
+/**
+ * Capture a portfolio snapshot
+ * Stores total value, cost basis, crypto value, stock value, and individual holding values
+ * Can be triggered manually or by a scheduled job
+ */
+export async function capturePortfolioSnapshot(forDate?: string): Promise<CaptureSnapshotResult> {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  try {
+    // Determine the snapshot date (defaults to today at end of day)
+    const snapshotDate = forDate ? new Date(forDate) : new Date();
+    // Normalize to start of day to ensure only one snapshot per day
+    snapshotDate.setHours(0, 0, 0, 0);
+
+    // Check if a snapshot already exists for this date
+    const existingSnapshot = await prisma.portfolioSnapshot.findFirst({
+      where: {
+        userId: session.user.id,
+        snapshotDate: snapshotDate,
+      },
+    });
+
+    if (existingSnapshot) {
+      // Return existing snapshot info
+      const holdings = existingSnapshot.holdings as unknown as HoldingSnapshot[];
+      return {
+        success: true,
+        alreadyExists: true,
+        snapshot: {
+          id: existingSnapshot.id,
+          userId: existingSnapshot.userId,
+          snapshotDate: existingSnapshot.snapshotDate,
+          totalValue: existingSnapshot.totalValue.toString(),
+          costBasis: existingSnapshot.costBasis.toString(),
+          cryptoValue: existingSnapshot.cryptoValue.toString(),
+          stockValue: existingSnapshot.stockValue.toString(),
+          holdings,
+          currency: existingSnapshot.currency,
+          createdAt: existingSnapshot.createdAt,
+        },
+      };
+    }
+
+    // Fetch all investments with their assets
+    const investments = await prisma.investment.findMany({
+      where: { userId: session.user.id },
+      include: { asset: true },
+    });
+
+    if (investments.length === 0) {
+      // No investments - create empty snapshot
+      const snapshot = await prisma.portfolioSnapshot.create({
+        data: {
+          userId: session.user.id,
+          snapshotDate,
+          totalValue: 0,
+          costBasis: 0,
+          cryptoValue: 0,
+          stockValue: 0,
+          holdings: [],
+          currency: Currency.USD,
+        },
+      });
+
+      return {
+        success: true,
+        snapshot: {
+          id: snapshot.id,
+          userId: snapshot.userId,
+          snapshotDate: snapshot.snapshotDate,
+          totalValue: snapshot.totalValue.toString(),
+          costBasis: snapshot.costBasis.toString(),
+          cryptoValue: snapshot.cryptoValue.toString(),
+          stockValue: snapshot.stockValue.toString(),
+          holdings: [],
+          currency: snapshot.currency,
+          createdAt: snapshot.createdAt,
+        },
+      };
+    }
+
+    // Get unique symbols
+    const symbols = [...new Set(investments.map((inv) => inv.asset.symbol))];
+
+    // Fetch current prices from cache
+    const cachedPrices = await prisma.priceCache.findMany({
+      where: { symbol: { in: symbols } },
+    });
+
+    const priceMap = new Map(cachedPrices.map((p) => [p.symbol, parseFloat(p.price.toString())]));
+
+    // Aggregate investments by symbol (lot tracking)
+    const holdingsMap = new Map<string, {
+      symbol: string;
+      assetType: AssetType;
+      totalQuantity: number;
+      totalCost: number;
+    }>();
+
+    investments.forEach((inv) => {
+      const quantity = parseFloat(inv.quantity.toString());
+      const price = parseFloat(inv.purchasePrice.toString());
+      const cost = quantity * price;
+
+      const existing = holdingsMap.get(inv.asset.symbol);
+      if (existing) {
+        existing.totalQuantity += quantity;
+        existing.totalCost += cost;
+      } else {
+        holdingsMap.set(inv.asset.symbol, {
+          symbol: inv.asset.symbol,
+          assetType: inv.asset.type,
+          totalQuantity: quantity,
+          totalCost: cost,
+        });
+      }
+    });
+
+    // Build holdings array and calculate totals
+    const holdings: HoldingSnapshot[] = [];
+    let totalValue = 0;
+    let totalCostBasis = 0;
+    let cryptoValue = 0;
+    let stockValue = 0; // Includes both stocks and ETFs
+
+    holdingsMap.forEach((holding) => {
+      const currentPrice = priceMap.get(holding.symbol) ?? null;
+      const avgPrice = holding.totalCost / holding.totalQuantity;
+      const value = currentPrice !== null ? holding.totalQuantity * currentPrice : null;
+      const gainLoss = value !== null ? value - holding.totalCost : null;
+      const gainLossPercent = gainLoss !== null && holding.totalCost > 0
+        ? (gainLoss / holding.totalCost) * 100
+        : null;
+
+      holdings.push({
+        symbol: holding.symbol,
+        assetType: holding.assetType,
+        quantity: holding.totalQuantity.toString(),
+        avgPrice: avgPrice.toFixed(2),
+        currentPrice: currentPrice !== null ? currentPrice.toString() : null,
+        value: value !== null ? value.toFixed(2) : null,
+        costBasis: holding.totalCost.toFixed(2),
+        gainLoss: gainLoss !== null ? gainLoss.toFixed(2) : null,
+        gainLossPercent: gainLossPercent !== null ? gainLossPercent.toFixed(2) : null,
+      });
+
+      // Accumulate totals (only if we have current prices)
+      if (value !== null) {
+        totalValue += value;
+
+        if (holding.assetType === AssetType.CRYPTO) {
+          cryptoValue += value;
+        } else {
+          // STOCK and ETF both go into stockValue
+          stockValue += value;
+        }
+      }
+
+      totalCostBasis += holding.totalCost;
+    });
+
+    // Create the snapshot
+    const snapshot = await prisma.portfolioSnapshot.create({
+      data: {
+        userId: session.user.id,
+        snapshotDate,
+        totalValue,
+        costBasis: totalCostBasis,
+        cryptoValue,
+        stockValue,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        holdings: holdings as any,
+        currency: Currency.USD,
+      },
+    });
+
+    return {
+      success: true,
+      snapshot: {
+        id: snapshot.id,
+        userId: snapshot.userId,
+        snapshotDate: snapshot.snapshotDate,
+        totalValue: snapshot.totalValue.toString(),
+        costBasis: snapshot.costBasis.toString(),
+        cryptoValue: snapshot.cryptoValue.toString(),
+        stockValue: snapshot.stockValue.toString(),
+        holdings,
+        currency: snapshot.currency,
+        createdAt: snapshot.createdAt,
+      },
+    };
+  } catch (error) {
+    console.error("Error capturing portfolio snapshot:", error);
+    return { success: false, error: "Failed to capture portfolio snapshot" };
+  }
+}
+
+/**
+ * Get portfolio snapshots for the user
+ * Supports filtering by date range and limiting results
+ */
+export async function getPortfolioSnapshots(input?: GetSnapshotsInput): Promise<GetSnapshotsResult> {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  try {
+    const { startDate, endDate, limit = 100 } = input || {};
+
+    // Build where clause
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const where: any = { userId: session.user.id };
+
+    if (startDate || endDate) {
+      where.snapshotDate = {};
+      if (startDate) {
+        where.snapshotDate.gte = new Date(startDate);
+      }
+      if (endDate) {
+        where.snapshotDate.lte = new Date(endDate);
+      }
+    }
+
+    const snapshots = await prisma.portfolioSnapshot.findMany({
+      where,
+      orderBy: { snapshotDate: "desc" },
+      take: Math.min(limit, 1000), // Cap at 1000 for safety
+    });
+
+    return {
+      success: true,
+      snapshots: snapshots.map((s) => ({
+        id: s.id,
+        userId: s.userId,
+        snapshotDate: s.snapshotDate,
+        totalValue: s.totalValue.toString(),
+        costBasis: s.costBasis.toString(),
+        cryptoValue: s.cryptoValue.toString(),
+        stockValue: s.stockValue.toString(),
+        holdings: s.holdings as unknown as HoldingSnapshot[],
+        currency: s.currency,
+        createdAt: s.createdAt,
+      })),
+    };
+  } catch (error) {
+    console.error("Error getting portfolio snapshots:", error);
+    return { success: false, error: "Failed to get portfolio snapshots" };
+  }
+}
+
+/**
+ * Get the latest portfolio snapshot for the user
+ */
+export async function getLatestSnapshot(): Promise<{ success: boolean; error?: string; snapshot?: PortfolioSnapshot }> {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  try {
+    const snapshot = await prisma.portfolioSnapshot.findFirst({
+      where: { userId: session.user.id },
+      orderBy: { snapshotDate: "desc" },
+    });
+
+    if (!snapshot) {
+      return { success: true, snapshot: undefined };
+    }
+
+    return {
+      success: true,
+      snapshot: {
+        id: snapshot.id,
+        userId: snapshot.userId,
+        snapshotDate: snapshot.snapshotDate,
+        totalValue: snapshot.totalValue.toString(),
+        costBasis: snapshot.costBasis.toString(),
+        cryptoValue: snapshot.cryptoValue.toString(),
+        stockValue: snapshot.stockValue.toString(),
+        holdings: snapshot.holdings as unknown as HoldingSnapshot[],
+        currency: snapshot.currency,
+        createdAt: snapshot.createdAt,
+      },
+    };
+  } catch (error) {
+    console.error("Error getting latest snapshot:", error);
+    return { success: false, error: "Failed to get latest snapshot" };
+  }
+}
+
 /**
  * Get cache statistics for monitoring
  * Returns info about cached prices, freshness, and hit rate
