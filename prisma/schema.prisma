@@ -24,6 +24,27 @@ enum InstitutionType {
 enum Currency {
   ARS
   USD
+  EUR
+  GBP
+  JPY
+  CAD
+  AUD
+  CHF
+  CNY
+  BRL
+}
+
+// Investment Module Enums
+enum AssetType {
+  CRYPTO
+  STOCK
+  ETF
+}
+
+enum DividendType {
+  REGULAR
+  SPECIAL
+  CAPITAL_GAIN
 }
 
 enum ExpenseCategory {
@@ -59,12 +80,17 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  expenses        Expense[]
-  monthlyExpenses MonthlyExpense[]
-  institutions    Institution[]
-  accounts        Account[]
-  creditCards     CreditCard[]
-  settings        UserSettings?
+  expenses           Expense[]
+  monthlyExpenses    MonthlyExpense[]
+  institutions       Institution[]
+  accounts           Account[]
+  creditCards        CreditCard[]
+  settings           UserSettings?
+  // Investment module relations
+  customAssets       Asset[]
+  investments        Investment[]
+  dividends          Dividend[]
+  portfolioSnapshots PortfolioSnapshot[]
 }
 
 model Institution {
@@ -120,11 +146,14 @@ model CreditCard {
 }
 
 model UserSettings {
-  id              String   @id @default(cuid())
-  userId          String   @unique
-  usdToArsRate    Decimal  @default(1200)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  usdToArsRate        Decimal  @default(1200)
+  // Investment module settings
+  displayCurrency     Currency @default(USD)  // Preferred display currency for investments
+  preferredCurrencies String[] @default(["USD", "EUR", "GBP"])  // List of preferred currencies
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -184,4 +213,99 @@ model MonthlyExpense {
 
   @@unique([expenseId, month])
   @@index([userId, month])
+}
+
+// ==========================================
+// Investment Module Models
+// ==========================================
+
+model Asset {
+  id          String    @id @default(cuid())
+  symbol      String    @unique  // e.g., BTC, AAPL, SPY
+  name        String              // Bitcoin, Apple Inc., S&P 500 ETF
+  type        AssetType           // CRYPTO, STOCK, ETF
+  precision   Int       @default(2)  // Decimal places (6 for crypto, 2 for stocks)
+  isActive    Boolean   @default(true)
+  isGlobal    Boolean   @default(true)  // true for pre-populated assets, false for user-created
+  userId      String?   // null for global assets, set for user-created custom assets
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user        User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  investments Investment[]
+
+  @@index([type])
+  @@index([userId])
+  @@index([symbol, isActive])
+}
+
+model Investment {
+  id             String   @id @default(cuid())
+  userId         String
+  assetId        String
+  quantity       Decimal  @db.Decimal(18, 6)  // Supports up to 6 decimal places for crypto
+  purchasePrice  Decimal  @db.Decimal(18, 2)  // Price per unit at purchase
+  purchaseCurrency Currency @default(USD)
+  purchaseDate   DateTime
+  platform       String   // Brokerage/exchange name (e.g., "Binance", "Robinhood")
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  asset     Asset      @relation(fields: [assetId], references: [id])
+  dividends Dividend[]
+
+  @@index([userId])
+  @@index([assetId])
+  @@index([userId, assetId])
+}
+
+model Dividend {
+  id           String       @id @default(cuid())
+  userId       String
+  investmentId String
+  amount       Decimal      @db.Decimal(18, 2)
+  currency     Currency     @default(USD)
+  paymentDate  DateTime
+  type         DividendType @default(REGULAR)
+  isReinvested Boolean      @default(false)
+  notes        String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  investment Investment @relation(fields: [investmentId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([investmentId])
+  @@index([userId, paymentDate])
+}
+
+model PortfolioSnapshot {
+  id           String   @id @default(cuid())
+  userId       String
+  snapshotDate DateTime
+  totalValue   Decimal  @db.Decimal(18, 2)  // Total portfolio value
+  costBasis    Decimal  @db.Decimal(18, 2)  // Total cost basis
+  cryptoValue  Decimal  @db.Decimal(18, 2)  // Value of crypto holdings
+  stockValue   Decimal  @db.Decimal(18, 2)  // Value of stock/ETF holdings
+  holdings     Json     // JSON field with individual holding values
+  currency     Currency @default(USD)       // Currency of snapshot values
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, snapshotDate])
+}
+
+model PriceCache {
+  symbol      String   @id  // Asset symbol as primary key
+  price       Decimal  @db.Decimal(18, 8)  // Current price
+  change24h   Decimal? @db.Decimal(10, 4)  // 24-hour change percentage
+  source      String   // Data source (e.g., "binance", "yahoo", "manual")
+  fetchedAt   DateTime // When the price was fetched
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
