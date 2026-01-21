@@ -342,3 +342,18 @@ Started: Wed Jan 21 00:10:20 -03 2026
   - createDividend validates that investment exists and belongs to the current user
   - Dividend model stores investmentId to link dividends to specific lots
 ---
+
+## 2026-01-21 - US-INV-021
+- What was implemented: View Dividend History feature - display and filter dividend records
+- Files changed:
+  - src/app/investments/actions.ts - Added getDividends server action with filtering by symbol, date range, and dividend type
+  - src/components/DividendsTab.tsx - Updated to fetch and display dividend history with responsive table/card views and filter controls
+- **Learnings for future iterations:**
+  - getDividends action filters by symbol using nested Prisma relations (investment.asset.symbol)
+  - Date range filtering adds one day to end date to include the full day (lt instead of lte)
+  - DividendsTab uses useEffect to fetch dividends when filter state changes
+  - Desktop view uses table layout, mobile uses card layout (consistent with HoldingsView pattern)
+  - Symbol filter dropdown populated from unique symbols in user's investments
+  - Loading state displayed while fetching dividends
+  - Empty state adapts message based on whether filters are active or no dividends exist
+---
