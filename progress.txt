@@ -324,3 +324,21 @@ Started: Wed Jan 21 00:10:20 -03 2026
   - onFetchBenchmark callback pattern allows parent to control data fetching while chart handles display
   - Benchmark disabled state when onFetchBenchmark is not provided
 ---
+
+## 2026-01-21 - US-INV-020
+- What was implemented: Record Dividend feature - users can record dividend payments from their investments
+- Files changed:
+  - src/app/investments/actions.ts - Added Dividend type exports and createDividend server action with validation
+  - src/app/investments/constants.ts - Added DIVIDEND_TYPES constant for dropdown options
+  - src/components/RecordDividendModal.tsx - New modal component for recording dividend payments
+  - src/components/DividendsTab.tsx - New tab component replacing placeholder in dividends tab
+  - src/components/AssetLibrarySection.tsx - Integrated DividendsTab component
+- **Learnings for future iterations:**
+  - Dividends are linked to individual investments (lots), not aggregated holdings
+  - Investment selection dropdown groups investments by symbol using optgroup for better UX
+  - DividendType enum has three values: REGULAR, SPECIAL, CAPITAL_GAIN
+  - DIVIDEND_TYPES constant uses { value, label } format for dropdown options
+  - Reinvested toggle uses a custom switch component (not native checkbox) for better UX
+  - createDividend validates that investment exists and belongs to the current user
+  - Dividend model stores investmentId to link dividends to specific lots
+---
