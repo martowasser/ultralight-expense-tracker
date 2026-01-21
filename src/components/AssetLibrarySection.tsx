@@ -10,6 +10,8 @@ import PortfolioDashboard from "./PortfolioDashboard";
 import { Asset, Investment, CachedPrice, getAssets, getInvestments, GetAssetsInput, fetchAssetPrices, clearPriceCache } from "@/app/investments/actions";
 import { AssetType } from "@/generated/prisma/enums";
 
+type TabType = "holdings" | "history" | "dividends";
+
 interface AssetLibrarySectionProps {
   initialAssets: Asset[];
   initialInvestments: Investment[];
@@ -35,6 +37,7 @@ export default function AssetLibrarySection({
   const [isLoading, setIsLoading] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingInvestment, setEditingInvestment] = useState<Investment | null>(null);
+  const [activeTab, setActiveTab] = useState<TabType>("holdings");
   const router = useRouter();
 
   const fetchAssets = useCallback(async () => {
@@ -276,90 +279,158 @@ export default function AssetLibrarySection({
         displayCurrency="USD"
       />
 
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-          <span className="text-sm text-[#737373]">asset library</span>
-        </div>
-
-        {/* Search and Filter Controls */}
-        <div className="flex flex-col sm:flex-row gap-3">
-          {/* Search Input */}
-          <div className="flex-1">
-            <input
-              type="text"
-              placeholder="search by symbol or name..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full px-3 py-3 text-sm text-[#171717] bg-white border border-[#e5e5e5] focus:border-[#171717] focus:outline-none"
-            />
-          </div>
-
-          {/* Type Filter */}
-          <div className="flex gap-1">
-            <button
-              onClick={() => setTypeFilter("ALL")}
-              className={`px-3 py-2 text-sm min-h-[44px] border ${
-                typeFilter === "ALL"
-                  ? "bg-[#171717] text-[#fafafa] border-[#171717]"
-                  : "bg-white text-[#737373] border-[#e5e5e5] hover:text-[#171717]"
-              }`}
-            >
-              all
-            </button>
-            <button
-              onClick={() => setTypeFilter("CRYPTO")}
-              className={`px-3 py-2 text-sm min-h-[44px] border ${
-                typeFilter === "CRYPTO"
-                  ? "bg-[#171717] text-[#fafafa] border-[#171717]"
-                  : "bg-white text-[#737373] border-[#e5e5e5] hover:text-[#171717]"
-              }`}
-            >
-              crypto
-            </button>
-            <button
-              onClick={() => setTypeFilter("STOCK")}
-              className={`px-3 py-2 text-sm min-h-[44px] border ${
-                typeFilter === "STOCK"
-                  ? "bg-[#171717] text-[#fafafa] border-[#171717]"
-                  : "bg-white text-[#737373] border-[#e5e5e5] hover:text-[#171717]"
-              }`}
-            >
-              stocks
-            </button>
-            <button
-              onClick={() => setTypeFilter("ETF")}
-              className={`px-3 py-2 text-sm min-h-[44px] border ${
-                typeFilter === "ETF"
-                  ? "bg-[#171717] text-[#fafafa] border-[#171717]"
-                  : "bg-white text-[#737373] border-[#e5e5e5] hover:text-[#171717]"
-              }`}
-            >
-              etfs
-            </button>
-          </div>
-        </div>
+      {/* Tab Navigation */}
+      <div className="border-b border-[#e5e5e5]">
+        <nav className="flex gap-0 -mb-px overflow-x-auto" aria-label="Tabs">
+          <button
+            onClick={() => setActiveTab("holdings")}
+            className={`px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+              activeTab === "holdings"
+                ? "border-[#171717] text-[#171717]"
+                : "border-transparent text-[#737373] hover:text-[#171717] hover:border-[#a3a3a3]"
+            }`}
+            aria-current={activeTab === "holdings" ? "page" : undefined}
+          >
+            holdings
+          </button>
+          <button
+            onClick={() => setActiveTab("history")}
+            className={`px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+              activeTab === "history"
+                ? "border-[#171717] text-[#171717]"
+                : "border-transparent text-[#737373] hover:text-[#171717] hover:border-[#a3a3a3]"
+            }`}
+            aria-current={activeTab === "history" ? "page" : undefined}
+          >
+            history
+          </button>
+          <button
+            onClick={() => setActiveTab("dividends")}
+            className={`px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+              activeTab === "dividends"
+                ? "border-[#171717] text-[#171717]"
+                : "border-transparent text-[#737373] hover:text-[#171717] hover:border-[#a3a3a3]"
+            }`}
+            aria-current={activeTab === "dividends" ? "page" : undefined}
+          >
+            dividends
+          </button>
+        </nav>
       </div>
 
-      {/* Loading State */}
-      {isLoading ? (
-        <div className="py-12 text-center">
-          <p className="text-sm text-[#a3a3a3]">loading assets...</p>
-        </div>
-      ) : (
-        <AssetLibraryList assets={assets} onRefresh={handleRefresh} />
+      {/* Tab Content */}
+      {activeTab === "holdings" && (
+        <>
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+              <span className="text-sm text-[#737373]">asset library</span>
+            </div>
+
+            {/* Search and Filter Controls */}
+            <div className="flex flex-col sm:flex-row gap-3">
+              {/* Search Input */}
+              <div className="flex-1">
+                <input
+                  type="text"
+                  placeholder="search by symbol or name..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full px-3 py-3 text-sm text-[#171717] bg-white border border-[#e5e5e5] focus:border-[#171717] focus:outline-none"
+                />
+              </div>
+
+              {/* Type Filter */}
+              <div className="flex gap-1">
+                <button
+                  onClick={() => setTypeFilter("ALL")}
+                  className={`px-3 py-2 text-sm min-h-[44px] border ${
+                    typeFilter === "ALL"
+                      ? "bg-[#171717] text-[#fafafa] border-[#171717]"
+                      : "bg-white text-[#737373] border-[#e5e5e5] hover:text-[#171717]"
+                  }`}
+                >
+                  all
+                </button>
+                <button
+                  onClick={() => setTypeFilter("CRYPTO")}
+                  className={`px-3 py-2 text-sm min-h-[44px] border ${
+                    typeFilter === "CRYPTO"
+                      ? "bg-[#171717] text-[#fafafa] border-[#171717]"
+                      : "bg-white text-[#737373] border-[#e5e5e5] hover:text-[#171717]"
+                  }`}
+                >
+                  crypto
+                </button>
+                <button
+                  onClick={() => setTypeFilter("STOCK")}
+                  className={`px-3 py-2 text-sm min-h-[44px] border ${
+                    typeFilter === "STOCK"
+                      ? "bg-[#171717] text-[#fafafa] border-[#171717]"
+                      : "bg-white text-[#737373] border-[#e5e5e5] hover:text-[#171717]"
+                  }`}
+                >
+                  stocks
+                </button>
+                <button
+                  onClick={() => setTypeFilter("ETF")}
+                  className={`px-3 py-2 text-sm min-h-[44px] border ${
+                    typeFilter === "ETF"
+                      ? "bg-[#171717] text-[#fafafa] border-[#171717]"
+                      : "bg-white text-[#737373] border-[#e5e5e5] hover:text-[#171717]"
+                  }`}
+                >
+                  etfs
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Loading State */}
+          {isLoading ? (
+            <div className="py-12 text-center">
+              <p className="text-sm text-[#a3a3a3]">loading assets...</p>
+            </div>
+          ) : (
+            <AssetLibraryList assets={assets} onRefresh={handleRefresh} />
+          )}
+
+          {/* User's Holdings */}
+          <HoldingsView
+            investments={investments}
+            prices={prices}
+            pricesLoading={pricesLoading}
+            lastPriceUpdate={lastPriceUpdate}
+            onRefresh={handleRefresh}
+            onRefreshPrices={handleRefreshPrices}
+            onAddInvestment={() => setShowAddModal(true)}
+            onEditInvestment={(investment) => setEditingInvestment(investment)}
+          />
+        </>
       )}
 
-      {/* User's Holdings */}
-      <HoldingsView
-        investments={investments}
-        prices={prices}
-        pricesLoading={pricesLoading}
-        lastPriceUpdate={lastPriceUpdate}
-        onRefresh={handleRefresh}
-        onRefreshPrices={handleRefreshPrices}
-        onAddInvestment={() => setShowAddModal(true)}
-        onEditInvestment={(investment) => setEditingInvestment(investment)}
-      />
+      {activeTab === "history" && (
+        <div className="py-12 text-center">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[#f5f5f5] mb-4">
+            <svg className="w-6 h-6 text-[#a3a3a3]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <p className="text-sm text-[#737373] mb-1">history</p>
+          <p className="text-xs text-[#a3a3a3]">portfolio snapshots and performance history will appear here</p>
+        </div>
+      )}
+
+      {activeTab === "dividends" && (
+        <div className="py-12 text-center">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[#f5f5f5] mb-4">
+            <svg className="w-6 h-6 text-[#a3a3a3]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <p className="text-sm text-[#737373] mb-1">dividends</p>
+          <p className="text-xs text-[#a3a3a3]">dividend records and income tracking will appear here</p>
+        </div>
+      )}
 
       {/* Add Investment Modal */}
       {showAddModal && (
