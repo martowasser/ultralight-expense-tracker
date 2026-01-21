@@ -77,3 +77,16 @@ Started: Wed Jan 21 00:10:20 -03 2026
   - Delete button triggers modal with confirmation and dividend count warning if applicable
   - Server action enforces userId check to prevent deleting other users' investments
 ---
+
+## 2026-01-21 - US-INV-004
+- What was implemented: List Investments feature with filtering and empty state
+- Files changed:
+  - src/components/InvestmentsList.tsx - Added filter controls (symbol, asset type, platform) and empty state with CTA
+  - src/components/AssetLibrarySection.tsx - Passed onAddInvestment callback to InvestmentsList
+- **Learnings for future iterations:**
+  - Client-side filtering with useMemo for performance (filter by symbol/name, asset type, platform)
+  - Platform filter dropdown dynamically shows only platforms user has investments on
+  - Empty state includes call-to-action button that opens AddInvestmentModal
+  - Filter results show "X of Y lots" when filters are active
+  - Clear filters button appears when no investments match filters
+---
