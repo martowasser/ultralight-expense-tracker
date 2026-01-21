@@ -2488,6 +2488,193 @@ export async function deleteDividend(dividendId: string): Promise<DeleteDividend
   }
 }
 
+// ==========================================
+// User Settings Types
+// ==========================================
+
+export interface UserSettings {
+  id: string;
+  userId: string;
+  displayCurrency: Currency;
+  preferredCurrencies: string[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface GetUserSettingsResult {
+  success: boolean;
+  error?: string;
+  settings?: UserSettings;
+}
+
+export interface UpdateDisplayCurrencyResult {
+  success: boolean;
+  error?: string;
+  settings?: UserSettings;
+}
+
+export interface UpdatePreferredCurrenciesResult {
+  success: boolean;
+  error?: string;
+  settings?: UserSettings;
+}
+
+// ==========================================
+// User Settings Actions
+// ==========================================
+
+/**
+ * Get user settings for the current user
+ * Creates default settings if none exist
+ */
+export async function getUserSettings(): Promise<GetUserSettingsResult> {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  try {
+    // Try to find existing settings
+    let settings = await prisma.userSettings.findUnique({
+      where: { userId: session.user.id },
+    });
+
+    // Create default settings if none exist
+    if (!settings) {
+      settings = await prisma.userSettings.create({
+        data: {
+          userId: session.user.id,
+          displayCurrency: Currency.USD,
+          preferredCurrencies: ["USD", "EUR", "GBP"],
+        },
+      });
+    }
+
+    return {
+      success: true,
+      settings: {
+        id: settings.id,
+        userId: settings.userId,
+        displayCurrency: settings.displayCurrency,
+        preferredCurrencies: settings.preferredCurrencies,
+        createdAt: settings.createdAt,
+        updatedAt: settings.updatedAt,
+      },
+    };
+  } catch (error) {
+    console.error("Error getting user settings:", error);
+    return { success: false, error: "Failed to get user settings" };
+  }
+}
+
+/**
+ * Update the user's display currency preference
+ */
+export async function updateDisplayCurrency(currency: Currency): Promise<UpdateDisplayCurrencyResult> {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  if (!currency) {
+    return { success: false, error: "Currency is required" };
+  }
+
+  // Validate currency is a valid enum value
+  const validCurrencies = ["USD", "EUR", "GBP", "JPY", "CAD", "AUD", "CHF", "CNY", "ARS", "BRL"];
+  if (!validCurrencies.includes(currency)) {
+    return { success: false, error: "Invalid currency" };
+  }
+
+  try {
+    // Upsert settings to handle case where settings don't exist
+    const settings = await prisma.userSettings.upsert({
+      where: { userId: session.user.id },
+      create: {
+        userId: session.user.id,
+        displayCurrency: currency,
+        preferredCurrencies: ["USD", "EUR", "GBP"],
+      },
+      update: {
+        displayCurrency: currency,
+      },
+    });
+
+    return {
+      success: true,
+      settings: {
+        id: settings.id,
+        userId: settings.userId,
+        displayCurrency: settings.displayCurrency,
+        preferredCurrencies: settings.preferredCurrencies,
+        createdAt: settings.createdAt,
+        updatedAt: settings.updatedAt,
+      },
+    };
+  } catch (error) {
+    console.error("Error updating display currency:", error);
+    return { success: false, error: "Failed to update display currency" };
+  }
+}
+
+/**
+ * Update the user's preferred currencies list
+ */
+export async function updatePreferredCurrencies(currencies: string[]): Promise<UpdatePreferredCurrenciesResult> {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  if (!currencies || !Array.isArray(currencies)) {
+    return { success: false, error: "Currencies list is required" };
+  }
+
+  if (currencies.length === 0) {
+    return { success: false, error: "At least one currency must be selected" };
+  }
+
+  // Validate all currencies are valid enum values
+  const validCurrencies = ["USD", "EUR", "GBP", "JPY", "CAD", "AUD", "CHF", "CNY", "ARS", "BRL"];
+  const invalidCurrencies = currencies.filter((c) => !validCurrencies.includes(c));
+  if (invalidCurrencies.length > 0) {
+    return { success: false, error: `Invalid currencies: ${invalidCurrencies.join(", ")}` };
+  }
+
+  try {
+    // Upsert settings to handle case where settings don't exist
+    const settings = await prisma.userSettings.upsert({
+      where: { userId: session.user.id },
+      create: {
+        userId: session.user.id,
+        displayCurrency: Currency.USD,
+        preferredCurrencies: currencies,
+      },
+      update: {
+        preferredCurrencies: currencies,
+      },
+    });
+
+    return {
+      success: true,
+      settings: {
+        id: settings.id,
+        userId: settings.userId,
+        displayCurrency: settings.displayCurrency,
+        preferredCurrencies: settings.preferredCurrencies,
+        createdAt: settings.createdAt,
+        updatedAt: settings.updatedAt,
+      },
+    };
+  } catch (error) {
+    console.error("Error updating preferred currencies:", error);
+    return { success: false, error: "Failed to update preferred currencies" };
+  }
+}
+
 /**
  * Create a new dividend record
  */

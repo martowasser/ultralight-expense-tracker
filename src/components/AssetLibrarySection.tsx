@@ -10,8 +10,9 @@ import HoldingsView from "./HoldingsView";
 import PortfolioDashboard from "./PortfolioDashboard";
 import HistoryTab from "./HistoryTab";
 import DividendsTab from "./DividendsTab";
-import { Asset, Investment, CachedPrice, HoldingDividendYield, getAssets, getInvestments, GetAssetsInput, fetchAssetPrices, clearPriceCache, getHoldingDividendYields } from "@/app/investments/actions";
-import { AssetType } from "@/generated/prisma/enums";
+import UserCurrencySettings from "./UserCurrencySettings";
+import { Asset, Investment, CachedPrice, HoldingDividendYield, UserSettings, getAssets, getInvestments, GetAssetsInput, fetchAssetPrices, clearPriceCache, getHoldingDividendYields, getUserSettings } from "@/app/investments/actions";
+import { AssetType, Currency } from "@/generated/prisma/enums";
 
 type TabType = "holdings" | "history" | "dividends";
 
@@ -43,7 +44,23 @@ export default function AssetLibrarySection({
   const [showCreateAssetModal, setShowCreateAssetModal] = useState(false);
   const [editingInvestment, setEditingInvestment] = useState<Investment | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>("holdings");
+  const [displayCurrency, setDisplayCurrency] = useState<Currency>("USD");
   const router = useRouter();
+
+  // Fetch user settings on mount
+  useEffect(() => {
+    const fetchUserSettings = async () => {
+      const result = await getUserSettings();
+      if (result.success && result.settings) {
+        setDisplayCurrency(result.settings.displayCurrency);
+      }
+    };
+    fetchUserSettings();
+  }, []);
+
+  const handleSettingsChange = (settings: UserSettings) => {
+    setDisplayCurrency(settings.displayCurrency);
+  };
 
   const fetchAssets = useCallback(async () => {
     setIsLoading(true);
@@ -205,6 +222,7 @@ export default function AssetLibrarySection({
           )}
         </div>
         <div className="flex items-center gap-2">
+          <UserCurrencySettings onSettingsChange={handleSettingsChange} />
           {investments.length > 0 && (
             <button
               onClick={() => handleRefreshPrices(false)}
@@ -291,7 +309,7 @@ export default function AssetLibrarySection({
       <PortfolioDashboard
         investments={investments}
         prices={prices}
-        displayCurrency="USD"
+        displayCurrency={displayCurrency}
       />
 
       {/* Tab Navigation */}
