@@ -438,3 +438,19 @@ Started: Wed Jan 21 00:10:20 -03 2026
   - Display mode shows the user's display currency symbol on prices/values (actual conversion will be in US-INV-028)
   - Original mode shows each holding's primary purchase currency
 ---
+
+## 2026-01-21 - US-INV-027
+- What was implemented: Exchange Rate Fetching feature - fetch and cache currency exchange rates
+- Files changed:
+  - src/lib/exchangeRateService.ts - New service with ExchangeRate.host (primary) and Open Exchange Rates (fallback) APIs
+  - prisma/schema.prisma - Added ExchangeRateCache model with unique constraint on baseCurrency+targetCurrency
+  - src/app/investments/actions.ts - Added server actions: fetchExchangeRates, getCachedExchangeRates, clearExchangeRateCache, getExchangeRateCacheStats, getExchangeRate
+- **Learnings for future iterations:**
+  - ExchangeRate.host is free with no API key, supports all 10 currencies
+  - Open Exchange Rates free tier only supports USD base - need to convert for other base currencies
+  - Exchange rate cache TTL is 1 hour (EXCHANGE_RATE_CACHE_TTL = 60 * 60 * 1000)
+  - ExchangeRateCache uses composite unique key @@unique([baseCurrency, targetCurrency])
+  - Graceful degradation pattern: on API failure, serve stale cache with "(cached)" suffix in source
+  - getExchangeRate helper converts between any two currencies using USD as intermediary
+  - SUPPORTED_CURRENCIES exported from exchangeRateService.ts for type safety
+---
