@@ -357,3 +357,19 @@ Started: Wed Jan 21 00:10:20 -03 2026
   - Loading state displayed while fetching dividends
   - Empty state adapts message based on whether filters are active or no dividends exist
 ---
+
+## 2026-01-21 - US-INV-022
+- What was implemented: Dividend Summary feature - display YTD, monthly, and yearly dividend totals with type breakdown
+- Files changed:
+  - src/app/investments/actions.ts - Added getDividendSummary server action with DividendSummary and DividendSummaryByType types
+  - src/components/DividendSummary.tsx - New component displaying 3 metric cards with totals and type breakdown
+  - src/components/DividendsTab.tsx - Integrated DividendSummary component, added summary state and fetch logic
+- **Learnings for future iterations:**
+  - DividendSummaryByType structure: { regular, special, capitalGain } for easy type breakdown
+  - Summary fetched on mount via useEffect, refetched after recording new dividend
+  - getDividendSummary calculates YTD (current year), this month, and last year (previous year) totals
+  - Uses DividendType enum values: REGULAR, SPECIAL, CAPITAL_GAIN mapped to object keys
+  - Grid layout: 3 columns on sm+ screens, single column on mobile
+  - Green color (#22c55e) used for dividend amounts to indicate income/positive values
+  - TypeBreakdown subcomponent conditionally displays only types with amounts > 0
+---
