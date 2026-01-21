@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import AssetLibraryList from "./AssetLibraryList";
 import AddInvestmentModal from "./AddInvestmentModal";
 import EditInvestmentModal from "./EditInvestmentModal";
+import CreateCustomAssetModal from "./CreateCustomAssetModal";
 import HoldingsView from "./HoldingsView";
 import PortfolioDashboard from "./PortfolioDashboard";
 import { Asset, Investment, CachedPrice, getAssets, getInvestments, GetAssetsInput, fetchAssetPrices, clearPriceCache } from "@/app/investments/actions";
@@ -36,6 +37,7 @@ export default function AssetLibrarySection({
   const [typeFilter, setTypeFilter] = useState<AssetType | "ALL">("ALL");
   const [isLoading, setIsLoading] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showCreateAssetModal, setShowCreateAssetModal] = useState(false);
   const [editingInvestment, setEditingInvestment] = useState<Investment | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>("holdings");
   const router = useRouter();
@@ -169,6 +171,11 @@ export default function AssetLibrarySection({
 
   const handleAddSuccess = () => {
     setShowAddModal(false);
+    handleRefresh();
+  };
+
+  const handleCreateAssetSuccess = () => {
+    setShowCreateAssetModal(false);
     handleRefresh();
   };
 
@@ -324,6 +331,12 @@ export default function AssetLibrarySection({
           <div className="flex flex-col gap-4">
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
               <span className="text-sm text-[#737373]">asset library</span>
+              <button
+                onClick={() => setShowCreateAssetModal(true)}
+                className="text-sm text-[#737373] hover:text-[#171717] underline"
+              >
+                + create custom asset
+              </button>
             </div>
 
             {/* Search and Filter Controls */}
@@ -447,6 +460,14 @@ export default function AssetLibrarySection({
           investment={editingInvestment}
           onClose={() => setEditingInvestment(null)}
           onSuccess={handleEditSuccess}
+        />
+      )}
+
+      {/* Create Custom Asset Modal */}
+      {showCreateAssetModal && (
+        <CreateCustomAssetModal
+          onClose={() => setShowCreateAssetModal(false)}
+          onSuccess={handleCreateAssetSuccess}
         />
       )}
     </div>

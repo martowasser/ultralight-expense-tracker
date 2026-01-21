@@ -114,6 +114,125 @@ export async function getAssets(input?: GetAssetsInput): Promise<GetAssetsResult
   }
 }
 
+// ==========================================
+// Create Custom Asset Types
+// ==========================================
+
+export interface CreateCustomAssetInput {
+  symbol: string;
+  name: string;
+  type: AssetType;
+  precision: number;
+}
+
+export interface CreateCustomAssetResult {
+  success: boolean;
+  error?: string;
+  asset?: Asset;
+}
+
+// ==========================================
+// Create Custom Asset Action
+// ==========================================
+
+/**
+ * Create a custom asset for the user
+ * Custom assets appear only in user's library and support manual price entry
+ */
+export async function createCustomAsset(input: CreateCustomAssetInput): Promise<CreateCustomAssetResult> {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  const { symbol, name, type, precision } = input;
+
+  // Validate required fields
+  if (!symbol || symbol.trim() === "") {
+    return { success: false, error: "Symbol is required" };
+  }
+
+  const normalizedSymbol = symbol.trim().toUpperCase();
+
+  // Validate symbol format (alphanumeric, 1-10 characters)
+  if (!/^[A-Z0-9]{1,10}$/.test(normalizedSymbol)) {
+    return { success: false, error: "Symbol must be 1-10 alphanumeric characters" };
+  }
+
+  if (!name || name.trim() === "") {
+    return { success: false, error: "Name is required" };
+  }
+
+  if (name.trim().length > 100) {
+    return { success: false, error: "Name must be 100 characters or less" };
+  }
+
+  if (!type) {
+    return { success: false, error: "Asset type is required" };
+  }
+
+  if (!["CRYPTO", "STOCK", "ETF"].includes(type)) {
+    return { success: false, error: "Invalid asset type" };
+  }
+
+  if (precision === undefined || precision === null) {
+    return { success: false, error: "Precision is required" };
+  }
+
+  if (!Number.isInteger(precision) || precision < 0 || precision > 8) {
+    return { success: false, error: "Precision must be an integer between 0 and 8" };
+  }
+
+  try {
+    // Check for duplicate symbols (across all assets - global and user's custom)
+    const existingAsset = await prisma.asset.findFirst({
+      where: {
+        symbol: normalizedSymbol,
+        OR: [
+          { isGlobal: true },
+          { userId: session.user.id },
+        ],
+      },
+    });
+
+    if (existingAsset) {
+      return { success: false, error: `Asset with symbol "${normalizedSymbol}" already exists` };
+    }
+
+    // Create the custom asset
+    const asset = await prisma.asset.create({
+      data: {
+        symbol: normalizedSymbol,
+        name: name.trim(),
+        type,
+        precision,
+        isActive: true,
+        isGlobal: false, // Custom assets are not global
+        userId: session.user.id,
+      },
+    });
+
+    return {
+      success: true,
+      asset: {
+        id: asset.id,
+        symbol: asset.symbol,
+        name: asset.name,
+        type: asset.type,
+        precision: asset.precision,
+        isActive: asset.isActive,
+        isGlobal: asset.isGlobal,
+        userId: asset.userId,
+        createdAt: asset.createdAt,
+      },
+    };
+  } catch (error) {
+    console.error("Error creating custom asset:", error);
+    return { success: false, error: "Failed to create custom asset" };
+  }
+}
+
 /**
  * Get a single asset by ID
  */
