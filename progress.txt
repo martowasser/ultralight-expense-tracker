@@ -188,3 +188,17 @@ Started: Wed Jan 21 00:10:20 -03 2026
   - onEditInvestment callback passed through HoldingsView, triggered from edit buttons on lots
   - handleEditSuccess closes modal and calls handleRefresh to update UI
 ---
+
+## 2026-01-21 - US-INV-011
+- What was implemented: Fallback Price Sources - automatic failover for price APIs
+- Files changed:
+  - src/lib/priceService.ts - Added CoinGecko and Alpha Vantage fallback APIs, automatic failover logic
+  - src/components/HoldingsView.tsx - Updated formatSourceName to display "alphavantage" as "Alpha Vantage (fallback)"
+- **Learnings for future iterations:**
+  - CoinGecko uses coin IDs (e.g., "bitcoin", "ethereum") instead of symbols - need COINGECKO_SYMBOL_MAP
+  - Alpha Vantage requires one request per symbol and uses "demo" API key for limited testing
+  - Fallback functions `fetchCryptoPricesWithFallback` and `fetchStockPricesWithFallback` handle per-symbol failover
+  - Source field values: "binance", "yahoo", "coingecko", "alphavantage" - formatted in UI via formatSourceName
+  - Fallback sources shown as "(fallback)" suffix to indicate they were used instead of primary
+  - Comprehensive console.log/console.error for monitoring price fetches and failures
+---
