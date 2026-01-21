@@ -125,3 +125,19 @@ Started: Wed Jan 21 00:10:20 -03 2026
   - Holdings now show: current price, 24h change (color-coded), gain/loss amount and %, source indicator
   - Prices are fetched automatically on mount and can be refreshed with button
 ---
+
+## 2026-01-21 - US-INV-007
+- What was implemented: Price Caching enhancements - graceful degradation and monitoring
+- Files changed:
+  - src/app/investments/actions.ts - Enhanced fetchAssetPrices with stale cache fallback, added clearPriceCache and getPriceCacheStats actions
+  - src/components/AssetLibrarySection.tsx - Added clearPriceCache import and forceRefresh parameter support
+  - src/components/HoldingsView.tsx - Added "force" button for manual cache clearing, updated formatSourceName to show "(stale)" indicator
+- **Learnings for future iterations:**
+  - fetchAssetPrices accepts forceRefresh param - when true, skips cache and fetches fresh prices
+  - On API failure, system falls back to stale cached prices with "(cached)" suffix in source field
+  - formatSourceName transforms "(cached)" to "(stale)" for user-friendly display
+  - clearPriceCache action deletes cache entries for user's portfolio symbols only
+  - getPriceCacheStats returns: totalCached, freshCount, staleCount, oldestFetchedAt, newestFetchedAt, cacheHitRate, symbolsCached
+  - UI now has two buttons: "refresh" (uses cache if fresh) and "force" (clears cache and fetches fresh)
+  - usedStaleCache flag in FetchAssetPricesResult indicates if fallback was used
+---
