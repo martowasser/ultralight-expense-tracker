@@ -141,3 +141,19 @@ Started: Wed Jan 21 00:10:20 -03 2026
   - UI now has two buttons: "refresh" (uses cache if fresh) and "force" (clears cache and fetches fresh)
   - usedStaleCache flag in FetchAssetPricesResult indicates if fallback was used
 ---
+
+## 2026-01-21 - US-INV-008
+- What was implemented: Portfolio Dashboard feature - at-a-glance portfolio overview
+- Files changed:
+  - src/components/PortfolioDashboard.tsx - New component showing portfolio metrics and asset allocation
+  - src/components/AssetLibrarySection.tsx - Integrated PortfolioDashboard component
+- **Learnings for future iterations:**
+  - PortfolioDashboard receives investments and prices arrays to calculate metrics
+  - Portfolio metrics include: totalValue, totalCostBasis, totalGainLoss, gainLossPercent
+  - Asset allocation calculated per type: crypto, stock, ETF with percentages
+  - Visual allocation bar uses color coding: crypto=#f59e0b (amber), stock=#3b82f6 (blue), ETF=#10b981 (green)
+  - Gain/loss is color-coded: green for positive, red for negative
+  - Component renders nothing if no investments exist
+  - Metrics recalculate automatically when prices state updates (via useMemo)
+  - displayCurrency prop used for currency symbol display (defaults to USD)
+---
