@@ -202,3 +202,16 @@ Started: Wed Jan 21 00:10:20 -03 2026
   - Fallback sources shown as "(fallback)" suffix to indicate they were used instead of primary
   - Comprehensive console.log/console.error for monitoring price fetches and failures
 ---
+
+## 2026-01-21 - US-INV-012
+- What was implemented: Manual Price Refresh - header refresh button with loading state and feedback
+- Files changed:
+  - src/components/AssetLibrarySection.tsx - Added refresh button in header, loading indicator, timestamp display, success/error feedback toast
+- **Learnings for future iterations:**
+  - RefreshFeedback interface with type (success/error) and message for toast notifications
+  - fetchPricesData now accepts showFeedback boolean parameter to trigger feedback display
+  - formatLastUpdated function provides relative time display (just now, Xm ago, Xh ago, or date)
+  - Toast auto-dismisses after 4 seconds using useEffect with cleanup
+  - Spinner animation uses Tailwind animate-spin class
+  - Refresh button disabled during loading with opacity-50 and cursor-not-allowed styles
+---
