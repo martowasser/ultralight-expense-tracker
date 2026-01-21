@@ -5,6 +5,8 @@ import {
   PortfolioSnapshot,
   getPortfolioSnapshots,
   createManualSnapshot,
+  getBenchmarkData,
+  BenchmarkDataPoint,
 } from "@/app/investments/actions";
 import PerformanceChart from "./PerformanceChart";
 
@@ -108,6 +110,18 @@ export default function HistoryTab({ onRefresh }: HistoryTabProps) {
     return "text-[#737373]";
   };
 
+  // Callback for fetching benchmark data
+  const handleFetchBenchmark = useCallback(
+    async (startDate: string, endDate: string): Promise<BenchmarkDataPoint[]> => {
+      const result = await getBenchmarkData(startDate, endDate);
+      if (result.success && result.data) {
+        return result.data;
+      }
+      return [];
+    },
+    []
+  );
+
   if (isLoading) {
     return (
       <div className="py-12 text-center">
@@ -206,7 +220,7 @@ export default function HistoryTab({ onRefresh }: HistoryTabProps) {
       {/* Performance Chart */}
       <div className="border border-[#e5e5e5] bg-white p-4">
         <h3 className="text-sm font-medium text-[#171717] mb-4">portfolio performance</h3>
-        <PerformanceChart snapshots={snapshots} />
+        <PerformanceChart snapshots={snapshots} onFetchBenchmark={handleFetchBenchmark} />
       </div>
 
       {/* Snapshots List */}

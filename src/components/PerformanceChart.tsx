@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   LineChart,
   Line,
@@ -10,12 +10,13 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { PortfolioSnapshot } from "@/app/investments/actions";
+import { PortfolioSnapshot, BenchmarkDataPoint } from "@/app/investments/actions";
 
 type TimeRange = "1W" | "1M" | "3M" | "6M" | "1Y" | "ALL";
 
 interface PerformanceChartProps {
   snapshots: PortfolioSnapshot[];
+  onFetchBenchmark?: (startDate: string, endDate: string) => Promise<BenchmarkDataPoint[]>;
 }
 
 interface ChartDataPoint {
@@ -23,6 +24,7 @@ interface ChartDataPoint {
   dateLabel: string;
   value: number;
   costBasis: number;
+  benchmark?: number;
 }
 
 interface TooltipPayload {
@@ -42,13 +44,17 @@ const TIME_RANGES: { key: TimeRange; label: string; days: number }[] = [
   { key: "ALL", label: "All", days: Infinity },
 ];
 
-export default function PerformanceChart({ snapshots }: PerformanceChartProps) {
+export default function PerformanceChart({ snapshots, onFetchBenchmark }: PerformanceChartProps) {
   const [selectedRange, setSelectedRange] = useState<TimeRange>("1M");
   const [activeTooltip, setActiveTooltip] = useState<ChartDataPoint | null>(null);
+  const [showCostBasis, setShowCostBasis] = useState(false);
+  const [showBenchmark, setShowBenchmark] = useState(false);
+  const [benchmarkData, setBenchmarkData] = useState<BenchmarkDataPoint[]>([]);
+  const [benchmarkLoading, setBenchmarkLoading] = useState(false);
 
   // Filter and format snapshots based on selected time range
-  const chartData = useMemo(() => {
-    if (snapshots.length === 0) return [];
+  const { chartData, dateRange } = useMemo(() => {
+    if (snapshots.length === 0) return { chartData: [], dateRange: null };
 
     // Sort snapshots by date ascending
     const sorted = [...snapshots].sort(
@@ -65,8 +71,14 @@ export default function PerformanceChart({ snapshots }: PerformanceChartProps) {
       (s) => new Date(s.snapshotDate).getTime() >= cutoffDate.getTime()
     );
 
+    if (filtered.length === 0) return { chartData: [], dateRange: null };
+
+    // Get date range for benchmark fetching
+    const startDate = new Date(filtered[0].snapshotDate).toISOString().split("T")[0];
+    const endDate = new Date(filtered[filtered.length - 1].snapshotDate).toISOString().split("T")[0];
+
     // Format for chart
-    return filtered.map((s) => {
+    const data = filtered.map((s) => {
       const date = new Date(s.snapshotDate);
       return {
         date: date.toISOString().split("T")[0],
@@ -79,7 +91,57 @@ export default function PerformanceChart({ snapshots }: PerformanceChartProps) {
         costBasis: parseFloat(s.costBasis),
       };
     });
+
+    return { chartData: data, dateRange: { startDate, endDate } };
   }, [snapshots, selectedRange]);
+
+  // Merge benchmark data with chart data
+  const chartDataWithBenchmark = useMemo(() => {
+    if (!showBenchmark || benchmarkData.length === 0 || chartData.length === 0) {
+      return chartData;
+    }
+
+    // Create a map of benchmark prices by date
+    const benchmarkMap = new Map(benchmarkData.map((b) => [b.date, b.price]));
+
+    // Get first portfolio value and first benchmark price to normalize
+    const firstPortfolioValue = chartData[0].value;
+    const firstBenchmarkPrice = benchmarkMap.get(chartData[0].date) || benchmarkData[0]?.price;
+
+    if (!firstBenchmarkPrice || firstPortfolioValue === 0) return chartData;
+
+    // Normalize benchmark to start at same value as portfolio
+    return chartData.map((point) => {
+      const benchmarkPrice = benchmarkMap.get(point.date);
+      const normalizedBenchmark = benchmarkPrice
+        ? (benchmarkPrice / firstBenchmarkPrice) * firstPortfolioValue
+        : undefined;
+      return {
+        ...point,
+        benchmark: normalizedBenchmark,
+      };
+    });
+  }, [chartData, benchmarkData, showBenchmark]);
+
+  // Fetch benchmark data when enabled or date range changes
+  useEffect(() => {
+    if (!showBenchmark || !dateRange || !onFetchBenchmark) {
+      return;
+    }
+
+    setBenchmarkLoading(true);
+    onFetchBenchmark(dateRange.startDate, dateRange.endDate)
+      .then((data) => {
+        setBenchmarkData(data);
+      })
+      .catch((err) => {
+        console.error("Failed to fetch benchmark data:", err);
+        setBenchmarkData([]);
+      })
+      .finally(() => {
+        setBenchmarkLoading(false);
+      });
+  }, [showBenchmark, dateRange, onFetchBenchmark]);
 
   // Calculate period return
   const periodReturn = useMemo(() => {
@@ -130,12 +192,28 @@ export default function PerformanceChart({ snapshots }: PerformanceChartProps) {
       return (
         <div className="bg-white border border-[#e5e5e5] px-3 py-2 shadow-sm">
           <p className="text-xs text-[#737373] mb-1">{data.dateLabel}</p>
-          <p className="text-sm font-medium text-[#171717]">
-            {formatCurrencyDetailed(data.value)}
-          </p>
-          <p className="text-xs text-[#a3a3a3]">
-            Cost basis: {formatCurrencyDetailed(data.costBasis)}
-          </p>
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-[#171717]"></span>
+            <p className="text-sm font-medium text-[#171717]">
+              Portfolio: {formatCurrencyDetailed(data.value)}
+            </p>
+          </div>
+          {showCostBasis && (
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-[#3b82f6]"></span>
+              <p className="text-xs text-[#737373]">
+                Cost basis: {formatCurrencyDetailed(data.costBasis)}
+              </p>
+            </div>
+          )}
+          {showBenchmark && data.benchmark !== undefined && (
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-[#10b981]"></span>
+              <p className="text-xs text-[#737373]">
+                S&P 500: {formatCurrencyDetailed(data.benchmark)}
+              </p>
+            </div>
+          )}
         </div>
       );
     }
@@ -175,7 +253,7 @@ export default function PerformanceChart({ snapshots }: PerformanceChartProps) {
 
   return (
     <div className="space-y-4">
-      {/* Time Range Selector */}
+      {/* Time Range Selector and Overlay Toggles */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex gap-1">
           {TIME_RANGES.map((range) => (
@@ -191,6 +269,32 @@ export default function PerformanceChart({ snapshots }: PerformanceChartProps) {
               {range.label}
             </button>
           ))}
+        </div>
+
+        {/* Overlay Toggles */}
+        <div className="flex items-center gap-3">
+          <label className="flex items-center gap-1.5 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={showCostBasis}
+              onChange={(e) => setShowCostBasis(e.target.checked)}
+              className="w-3.5 h-3.5 rounded border-[#d4d4d4] text-[#3b82f6] focus:ring-[#3b82f6] focus:ring-offset-0"
+            />
+            <span className="text-xs text-[#737373]">cost basis</span>
+          </label>
+          <label className="flex items-center gap-1.5 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={showBenchmark}
+              onChange={(e) => setShowBenchmark(e.target.checked)}
+              disabled={!onFetchBenchmark}
+              className="w-3.5 h-3.5 rounded border-[#d4d4d4] text-[#10b981] focus:ring-[#10b981] focus:ring-offset-0 disabled:opacity-50"
+            />
+            <span className={`text-xs ${onFetchBenchmark ? "text-[#737373]" : "text-[#a3a3a3]"}`}>
+              S&P 500
+              {benchmarkLoading && " (loading...)"}
+            </span>
+          </label>
         </div>
       </div>
 
@@ -236,11 +340,33 @@ export default function PerformanceChart({ snapshots }: PerformanceChartProps) {
         </div>
       )}
 
+      {/* Legend */}
+      {(showCostBasis || showBenchmark) && (
+        <div className="flex items-center gap-4 justify-center">
+          <div className="flex items-center gap-1.5">
+            <span className="w-3 h-0.5 bg-[#171717]"></span>
+            <span className="text-xs text-[#737373]">portfolio</span>
+          </div>
+          {showCostBasis && (
+            <div className="flex items-center gap-1.5">
+              <span className="w-3 h-0.5 bg-[#3b82f6]"></span>
+              <span className="text-xs text-[#737373]">cost basis</span>
+            </div>
+          )}
+          {showBenchmark && (
+            <div className="flex items-center gap-1.5">
+              <span className="w-3 h-0.5 bg-[#10b981]"></span>
+              <span className="text-xs text-[#737373]">S&P 500</span>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Chart */}
       <div className="h-[250px] sm:h-[300px] w-full">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
-            data={chartData}
+            data={chartDataWithBenchmark}
             margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
             onMouseMove={(state) => {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -268,14 +394,42 @@ export default function PerformanceChart({ snapshots }: PerformanceChartProps) {
               width={60}
             />
             <Tooltip content={<CustomTooltip />} />
+            {/* Portfolio Value Line (main) */}
             <Line
               type="monotone"
               dataKey="value"
+              name="Portfolio"
               stroke="#171717"
               strokeWidth={2}
-              dot={chartData.length <= 30}
+              dot={chartDataWithBenchmark.length <= 30}
               activeDot={{ r: 4, fill: "#171717" }}
             />
+            {/* Cost Basis Line (optional overlay) */}
+            {showCostBasis && (
+              <Line
+                type="monotone"
+                dataKey="costBasis"
+                name="Cost Basis"
+                stroke="#3b82f6"
+                strokeWidth={1.5}
+                strokeDasharray="5 5"
+                dot={false}
+                activeDot={{ r: 3, fill: "#3b82f6" }}
+              />
+            )}
+            {/* S&P 500 Benchmark Line (optional overlay) */}
+            {showBenchmark && (
+              <Line
+                type="monotone"
+                dataKey="benchmark"
+                name="S&P 500"
+                stroke="#10b981"
+                strokeWidth={1.5}
+                dot={false}
+                activeDot={{ r: 3, fill: "#10b981" }}
+                connectNulls={false}
+              />
+            )}
           </LineChart>
         </ResponsiveContainer>
       </div>

@@ -1842,6 +1842,107 @@ export async function createManualSnapshot(): Promise<CreateManualSnapshotResult
   }
 }
 
+// ==========================================
+// Benchmark Data Types
+// ==========================================
+
+export interface BenchmarkDataPoint {
+  date: string;
+  price: number;
+}
+
+export interface GetBenchmarkDataResult {
+  success: boolean;
+  error?: string;
+  data?: BenchmarkDataPoint[];
+}
+
+// ==========================================
+// Benchmark Data Action
+// ==========================================
+
+/**
+ * Fetch historical S&P 500 benchmark data (using SPY ETF as proxy)
+ * Used for chart overlay comparison
+ */
+export async function getBenchmarkData(startDate: string, endDate: string): Promise<GetBenchmarkDataResult> {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  try {
+    // Convert dates to Unix timestamps for Yahoo Finance
+    const start = Math.floor(new Date(startDate).getTime() / 1000);
+    const end = Math.floor(new Date(endDate).getTime() / 1000) + 86400; // Add one day to include end date
+
+    // Fetch historical data from Yahoo Finance for SPY (S&P 500 ETF)
+    const response = await fetch(
+      `https://query1.finance.yahoo.com/v8/finance/chart/SPY?period1=${start}&period2=${end}&interval=1d`,
+      {
+        headers: {
+          Accept: "application/json",
+          "User-Agent": "Mozilla/5.0",
+        },
+        next: { revalidate: 3600 }, // Cache for 1 hour
+      }
+    );
+
+    if (!response.ok) {
+      console.error("Yahoo Finance historical API error:", response.status);
+      return { success: false, error: "Failed to fetch benchmark data" };
+    }
+
+    interface YahooChartResult {
+      chart: {
+        result: Array<{
+          timestamp: number[];
+          indicators: {
+            quote: Array<{
+              close: (number | null)[];
+            }>;
+          };
+        }>;
+        error: null | { code: string; description: string };
+      };
+    }
+
+    const data: YahooChartResult = await response.json();
+
+    if (data.chart.error) {
+      console.error("Yahoo Finance error:", data.chart.error);
+      return { success: false, error: "Failed to fetch benchmark data" };
+    }
+
+    const result = data.chart.result?.[0];
+    if (!result || !result.timestamp || !result.indicators?.quote?.[0]?.close) {
+      return { success: true, data: [] };
+    }
+
+    const timestamps = result.timestamp;
+    const closes = result.indicators.quote[0].close;
+
+    // Build data points array
+    const benchmarkData: BenchmarkDataPoint[] = [];
+    for (let i = 0; i < timestamps.length; i++) {
+      const closePrice = closes[i];
+      if (closePrice !== null) {
+        const date = new Date(timestamps[i] * 1000).toISOString().split("T")[0];
+        benchmarkData.push({
+          date,
+          price: closePrice,
+        });
+      }
+    }
+
+    return { success: true, data: benchmarkData };
+  } catch (error) {
+    console.error("Error fetching benchmark data:", error);
+    return { success: false, error: "Failed to fetch benchmark data" };
+  }
+}
+
 /**
  * Get cache statistics for monitoring
  * Returns info about cached prices, freshness, and hit rate
