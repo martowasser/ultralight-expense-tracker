@@ -157,3 +157,18 @@ Started: Wed Jan 21 00:10:20 -03 2026
   - Metrics recalculate automatically when prices state updates (via useMemo)
   - displayCurrency prop used for currency symbol display (defaults to USD)
 ---
+
+## 2026-01-21 - US-INV-009
+- What was implemented: Holdings View - responsive table (desktop) and card (mobile) views
+- Files changed:
+  - src/components/HoldingsView.tsx - Added responsive design with table view (md+) and card view (mobile), asset type icons with color coding
+- **Learnings for future iterations:**
+  - Desktop (md+) uses table layout with columns: Asset, Quantity, Avg Price, Current Price, Value, Gain/Loss, 24h, Actions
+  - Mobile uses card layout with stacked information (same as before)
+  - AssetTypeIcon component renders SVG icons for CRYPTO (coin), STOCK (bar chart), ETF (grid chart)
+  - assetTypeColors mapping provides Tailwind-safe color classes: CRYPTO=#f59e0b, STOCK=#3b82f6, ETF=#10b981
+  - Dynamic Tailwind classes (using template literals) don't work - must use pre-defined class string mappings
+  - Use React.Fragment with key for table body iterations that render multiple rows
+  - Expanded lot rows in table show platform, date, quantity, price, cost, and edit/delete actions
+  - `hidden md:block` and `md:hidden` classes control responsive visibility
+---
