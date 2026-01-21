@@ -291,3 +291,20 @@ Started: Wed Jan 21 00:10:20 -03 2026
   - Feedback toast displays success/error messages with auto-dismiss after 4 seconds
   - Reusing existing PortfolioSnapshot type - no new types needed for manual snapshots
 ---
+
+## 2026-01-21 - US-INV-018
+- What was implemented: Performance Chart feature - line chart showing portfolio value over time
+- Files changed:
+  - src/components/PerformanceChart.tsx - New Recharts-based chart component with time range selector
+  - src/components/HistoryTab.tsx - Integrated PerformanceChart component
+  - package.json - Added recharts dependency
+- **Learnings for future iterations:**
+  - Recharts library used for charting - installed via `npm install recharts`
+  - Time range selector: 1W, 1M, 3M, 6M, 1Y, All - filters snapshots by date range
+  - Chart onMouseMove handler uses `(state as any).activePayload` for tooltip data (TypeScript types incomplete)
+  - Period return calculation: (endValue - startValue) / startValue * 100
+  - Responsive chart height: h-[250px] on mobile, sm:h-[300px] on desktop
+  - Custom tooltip shows date, value, and cost basis
+  - Shows dots on chart only when data points <= 30 for visual clarity
+  - Empty state messages for: no snapshots, and less than 2 snapshots in range
+---
