@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import AssetLibraryList from "./AssetLibraryList";
 import AddInvestmentModal from "./AddInvestmentModal";
-import InvestmentsList from "./InvestmentsList";
+import HoldingsView from "./HoldingsView";
 import { Asset, Investment, getAssets, getInvestments, GetAssetsInput } from "@/app/investments/actions";
 import { AssetType } from "@/generated/prisma/enums";
 
@@ -158,8 +158,8 @@ export default function AssetLibrarySection({
         <AssetLibraryList assets={assets} onRefresh={handleRefresh} />
       )}
 
-      {/* User's Investments */}
-      <InvestmentsList
+      {/* User's Holdings */}
+      <HoldingsView
         investments={investments}
         onRefresh={handleRefresh}
         onAddInvestment={() => setShowAddModal(true)}
