@@ -2303,6 +2303,138 @@ export async function getDividendSummary(): Promise<GetDividendSummaryResult> {
   }
 }
 
+// ==========================================
+// Dividend Yield Types
+// ==========================================
+
+export interface HoldingDividendYield {
+  symbol: string;
+  annualDividends: number;
+  currentValue: number | null;
+  yield: number | null; // null if no current value available
+}
+
+export interface GetHoldingDividendYieldsResult {
+  success: boolean;
+  error?: string;
+  yields?: HoldingDividendYield[];
+}
+
+// ==========================================
+// Dividend Yield Action
+// ==========================================
+
+/**
+ * Get dividend yield per holding
+ * Yield calculated as (Annual Dividends / Current Value) × 100
+ * Only returns holdings that have received dividends
+ */
+export async function getHoldingDividendYields(): Promise<GetHoldingDividendYieldsResult> {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  try {
+    // Get dividends from the last 12 months to calculate annual dividends
+    const oneYearAgo = new Date();
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+
+    const dividends = await prisma.dividend.findMany({
+      where: {
+        userId: session.user.id,
+        paymentDate: {
+          gte: oneYearAgo,
+        },
+      },
+      include: {
+        investment: {
+          include: { asset: true },
+        },
+      },
+    });
+
+    if (dividends.length === 0) {
+      return { success: true, yields: [] };
+    }
+
+    // Aggregate dividends by symbol
+    const dividendsBySymbol = new Map<string, number>();
+    dividends.forEach((div) => {
+      const symbol = div.investment.asset.symbol;
+      const amount = parseFloat(div.amount.toString());
+      const current = dividendsBySymbol.get(symbol) || 0;
+      dividendsBySymbol.set(symbol, current + amount);
+    });
+
+    // Get symbols that have dividends
+    const symbolsWithDividends = Array.from(dividendsBySymbol.keys());
+
+    // Get investments for these symbols to calculate current value
+    const investments = await prisma.investment.findMany({
+      where: {
+        userId: session.user.id,
+        asset: {
+          symbol: { in: symbolsWithDividends },
+        },
+      },
+      include: { asset: true },
+    });
+
+    // Aggregate holdings by symbol
+    const holdingsBySymbol = new Map<string, { totalQuantity: number }>();
+    investments.forEach((inv) => {
+      const symbol = inv.asset.symbol;
+      const quantity = parseFloat(inv.quantity.toString());
+      const existing = holdingsBySymbol.get(symbol);
+      if (existing) {
+        existing.totalQuantity += quantity;
+      } else {
+        holdingsBySymbol.set(symbol, { totalQuantity: quantity });
+      }
+    });
+
+    // Get current prices from cache
+    const cachedPrices = await prisma.priceCache.findMany({
+      where: { symbol: { in: symbolsWithDividends } },
+    });
+
+    const priceMap = new Map(
+      cachedPrices.map((p) => [p.symbol, parseFloat(p.price.toString())])
+    );
+
+    // Calculate yield for each symbol
+    const yields: HoldingDividendYield[] = [];
+    dividendsBySymbol.forEach((annualDividends, symbol) => {
+      const holding = holdingsBySymbol.get(symbol);
+      const currentPrice = priceMap.get(symbol);
+
+      if (holding && holding.totalQuantity > 0) {
+        const currentValue = currentPrice !== undefined
+          ? holding.totalQuantity * currentPrice
+          : null;
+
+        const yieldPercent = currentValue !== null && currentValue > 0
+          ? (annualDividends / currentValue) * 100
+          : null;
+
+        yields.push({
+          symbol,
+          annualDividends,
+          currentValue,
+          yield: yieldPercent,
+        });
+      }
+    });
+
+    return { success: true, yields };
+  } catch (error) {
+    console.error("Error getting holding dividend yields:", error);
+    return { success: false, error: "Failed to get dividend yields" };
+  }
+}
+
 /**
  * Create a new dividend record
  */

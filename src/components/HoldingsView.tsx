@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Investment, CachedPrice, Asset } from "@/app/investments/actions";
+import { Investment, CachedPrice, Asset, HoldingDividendYield } from "@/app/investments/actions";
 import { AssetType } from "@/generated/prisma/enums";
 import DeleteInvestmentModal from "./DeleteInvestmentModal";
 import ManualPriceModal from "./ManualPriceModal";
@@ -44,6 +44,7 @@ const AssetTypeIcon = ({ type }: { type: AssetType }) => {
 interface HoldingsViewProps {
   investments: Investment[];
   prices?: CachedPrice[];
+  dividendYields?: HoldingDividendYield[];
   pricesLoading?: boolean;
   lastPriceUpdate?: Date | null;
   onRefresh: () => void;
@@ -75,11 +76,14 @@ interface Holding {
   gainLossPercent?: number;
   // Custom asset tracking
   isCustom: boolean;
+  // Dividend yield
+  dividendYield?: number | null;
 }
 
 export default function HoldingsView({
   investments,
   prices = [],
+  dividendYields = [],
   pricesLoading = false,
   lastPriceUpdate,
   onRefresh,
@@ -180,6 +184,15 @@ export default function HoldingsView({
     return map;
   }, [prices]);
 
+  // Create a map of dividend yields by symbol for quick lookup
+  const yieldMap = useMemo(() => {
+    const map = new Map<string, number | null>();
+    dividendYields.forEach((y) => {
+      map.set(y.symbol, y.yield);
+    });
+    return map;
+  }, [dividendYields]);
+
   // Get unique platforms from user's investments
   const uniquePlatforms = useMemo(() => {
     const platforms = new Set(investments.map((inv) => inv.platform));
@@ -256,6 +269,11 @@ export default function HoldingsView({
         holding.gainLossPercent = (holding.gainLoss / holding.totalCost) * 100;
       }
 
+      // Add dividend yield if available (only for holdings with dividends)
+      if (yieldMap.has(holding.symbol)) {
+        holding.dividendYield = yieldMap.get(holding.symbol) ?? null;
+      }
+
       // Sort lots by purchase date descending (newest first)
       holding.lots.sort(
         (a, b) => new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime()
@@ -266,7 +284,7 @@ export default function HoldingsView({
     return Array.from(holdingsMap.values()).sort((a, b) =>
       a.symbol.localeCompare(b.symbol)
     );
-  }, [filteredInvestments, priceMap]);
+  }, [filteredInvestments, priceMap, yieldMap]);
 
   // Empty state for new users (no investments at all)
   if (investments.length === 0) {
@@ -446,6 +464,7 @@ export default function HoldingsView({
                   <th className="text-right px-4 py-3 text-xs font-medium text-[#737373]">Value</th>
                   <th className="text-right px-4 py-3 text-xs font-medium text-[#737373]">Gain/Loss</th>
                   <th className="text-right px-4 py-3 text-xs font-medium text-[#737373]">24h</th>
+                  <th className="text-right px-4 py-3 text-xs font-medium text-[#737373]">Yield</th>
                   <th className="text-right px-4 py-3 text-xs font-medium text-[#737373]">Actions</th>
                 </tr>
               </thead>
@@ -583,6 +602,15 @@ export default function HoldingsView({
                           )}
                         </td>
                         <td className="px-4 py-3 text-right">
+                          {holding.dividendYield !== undefined && holding.dividendYield !== null ? (
+                            <span className="inline-block px-1.5 py-0.5 rounded text-xs text-purple-700 bg-purple-50">
+                              {holding.dividendYield.toFixed(2)}%
+                            </span>
+                          ) : (
+                            <span className="text-[#a3a3a3]">—</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-right">
                           {!hasMultipleLots && (
                             <div className="flex justify-end gap-1">
                               {onEditInvestment && (
@@ -634,6 +662,7 @@ export default function HoldingsView({
                             <td className="px-4 py-2 text-right text-xs text-[#737373]">
                               {lot.purchaseCurrency} {lotCost.toFixed(2)}
                             </td>
+                            <td className="px-4 py-2 text-right text-xs text-[#a3a3a3]">—</td>
                             <td className="px-4 py-2 text-right text-xs text-[#a3a3a3]">—</td>
                             <td className="px-4 py-2 text-right text-xs text-[#a3a3a3]">—</td>
                             <td className="px-4 py-2 text-right">
@@ -791,6 +820,11 @@ export default function HoldingsView({
                               }
                             >
                               {holding.gainLoss >= 0 ? "+" : ""}${holding.gainLoss.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ({holding.gainLoss >= 0 ? "+" : ""}{holding.gainLossPercent.toFixed(2)}%)
+                            </span>
+                          )}
+                          {holding.dividendYield !== undefined && holding.dividendYield !== null && (
+                            <span className="text-purple-700">
+                              yield: {holding.dividendYield.toFixed(2)}%
                             </span>
                           )}
                         </div>

@@ -10,7 +10,7 @@ import HoldingsView from "./HoldingsView";
 import PortfolioDashboard from "./PortfolioDashboard";
 import HistoryTab from "./HistoryTab";
 import DividendsTab from "./DividendsTab";
-import { Asset, Investment, CachedPrice, getAssets, getInvestments, GetAssetsInput, fetchAssetPrices, clearPriceCache } from "@/app/investments/actions";
+import { Asset, Investment, CachedPrice, HoldingDividendYield, getAssets, getInvestments, GetAssetsInput, fetchAssetPrices, clearPriceCache, getHoldingDividendYields } from "@/app/investments/actions";
 import { AssetType } from "@/generated/prisma/enums";
 
 type TabType = "holdings" | "history" | "dividends";
@@ -32,6 +32,7 @@ export default function AssetLibrarySection({
   const [assets, setAssets] = useState<Asset[]>(initialAssets);
   const [investments, setInvestments] = useState<Investment[]>(initialInvestments);
   const [prices, setPrices] = useState<CachedPrice[]>([]);
+  const [dividendYields, setDividendYields] = useState<HoldingDividendYield[]>([]);
   const [pricesLoading, setPricesLoading] = useState(false);
   const [lastPriceUpdate, setLastPriceUpdate] = useState<Date | null>(null);
   const [refreshFeedback, setRefreshFeedback] = useState<RefreshFeedback | null>(null);
@@ -101,6 +102,11 @@ export default function AssetLibrarySection({
             return priceDate > latest ? priceDate : latest;
           }, new Date(0));
           setLastPriceUpdate(mostRecent);
+        }
+        // Fetch dividend yields after prices are updated (yields depend on current prices)
+        const yieldsResult = await getHoldingDividendYields();
+        if (yieldsResult.success && yieldsResult.yields) {
+          setDividendYields(yieldsResult.yields);
         }
         if (showFeedback) {
           const priceCount = result.prices.length;
@@ -413,6 +419,7 @@ export default function AssetLibrarySection({
           <HoldingsView
             investments={investments}
             prices={prices}
+            dividendYields={dividendYields}
             pricesLoading={pricesLoading}
             lastPriceUpdate={lastPriceUpdate}
             onRefresh={handleRefresh}
