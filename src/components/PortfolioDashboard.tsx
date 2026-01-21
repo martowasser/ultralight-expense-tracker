@@ -13,6 +13,7 @@ interface PortfolioDashboardProps {
   exchangeRates?: CurrencyConversionRates;
   onCurrencyChange?: (currency: Currency) => void;
   isCurrencyLoading?: boolean;
+  ytdDividendTotal?: number;
 }
 
 interface PortfolioMetrics {
@@ -36,6 +37,7 @@ export default function PortfolioDashboard({
   exchangeRates = {},
   onCurrencyChange,
   isCurrencyLoading = false,
+  ytdDividendTotal = 0,
 }: PortfolioDashboardProps) {
   // Get currency symbol for display
   const getCurrencySymbol = (currency: Currency): string => {
@@ -197,9 +199,9 @@ export default function PortfolioDashboard({
         </div>
 
         {/* Gain/Loss */}
-        <div className="col-span-2 border border-[#e5e5e5] bg-white p-4">
+        <div className="border border-[#e5e5e5] bg-white p-4">
           <p className="text-xs text-[#737373] mb-1">total gain/loss</p>
-          <div className="flex items-baseline gap-3">
+          <div className="flex items-baseline gap-2">
             <p
               className={`text-lg font-medium ${
                 metrics.totalGainLoss >= 0 ? "text-green-600" : "text-red-600"
@@ -209,7 +211,7 @@ export default function PortfolioDashboard({
               {currencySymbol}{formatCurrency(Math.abs(metrics.totalGainLoss))}
             </p>
             <span
-              className={`text-sm px-2 py-0.5 rounded ${
+              className={`text-xs px-1.5 py-0.5 rounded ${
                 metrics.totalGainLoss >= 0
                   ? "text-green-700 bg-green-50"
                   : "text-red-700 bg-red-50"
@@ -219,6 +221,14 @@ export default function PortfolioDashboard({
               {formatPercent(metrics.totalGainLossPercent)}%
             </span>
           </div>
+        </div>
+
+        {/* YTD Dividends */}
+        <div className="border border-[#e5e5e5] bg-white p-4">
+          <p className="text-xs text-[#737373] mb-1">ytd dividends</p>
+          <p className="text-lg font-medium text-green-600">
+            +{currencySymbol}{formatCurrency(ytdDividendTotal)}
+          </p>
         </div>
       </div>
 

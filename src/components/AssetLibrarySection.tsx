@@ -11,7 +11,7 @@ import PortfolioDashboard from "./PortfolioDashboard";
 import HistoryTab from "./HistoryTab";
 import DividendsTab from "./DividendsTab";
 import UserCurrencySettings from "./UserCurrencySettings";
-import { Asset, Investment, CachedPrice, HoldingDividendYield, UserSettings, CurrencyConversionRates, getAssets, getInvestments, GetAssetsInput, fetchAssetPrices, clearPriceCache, getHoldingDividendYields, getUserSettings, getPortfolioExchangeRates, updateDisplayCurrency } from "@/app/investments/actions";
+import { Asset, Investment, CachedPrice, HoldingDividendYield, UserSettings, CurrencyConversionRates, getAssets, getInvestments, GetAssetsInput, fetchAssetPrices, clearPriceCache, getHoldingDividendYields, getUserSettings, getPortfolioExchangeRates, updateDisplayCurrency, getDividendSummary } from "@/app/investments/actions";
 import { AssetType, Currency } from "@/generated/prisma/enums";
 
 type TabType = "holdings" | "history" | "dividends";
@@ -34,6 +34,7 @@ export default function AssetLibrarySection({
   const [investments, setInvestments] = useState<Investment[]>(initialInvestments);
   const [prices, setPrices] = useState<CachedPrice[]>([]);
   const [dividendYields, setDividendYields] = useState<HoldingDividendYield[]>([]);
+  const [ytdDividendTotal, setYtdDividendTotal] = useState<number>(0);
   const [exchangeRates, setExchangeRates] = useState<CurrencyConversionRates>({});
   const [currencyLoading, setCurrencyLoading] = useState(false);
   const [pricesLoading, setPricesLoading] = useState(false);
@@ -130,6 +131,14 @@ export default function AssetLibrarySection({
     }
   }, []);
 
+  // Fetch YTD dividend total for dashboard
+  const fetchDividendTotal = useCallback(async () => {
+    const result = await getDividendSummary();
+    if (result.success && result.summary) {
+      setYtdDividendTotal(result.summary.ytdTotal);
+    }
+  }, []);
+
   const fetchPricesData = useCallback(async (forceRefresh: boolean = false, showFeedback: boolean = false) => {
     setPricesLoading(true);
     setRefreshFeedback(null);
@@ -187,9 +196,15 @@ export default function AssetLibrarySection({
     }
   }, [investments.length, fetchPricesData]);
 
+  // Fetch YTD dividend total on mount
+  useEffect(() => {
+    fetchDividendTotal();
+  }, [fetchDividendTotal]);
+
   const handleRefresh = () => {
     fetchAssets();
     fetchInvestments();
+    fetchDividendTotal();
     router.refresh();
   };
 
@@ -344,6 +359,7 @@ export default function AssetLibrarySection({
         exchangeRates={exchangeRates}
         onCurrencyChange={handleCurrencyChange}
         isCurrencyLoading={currencyLoading}
+        ytdDividendTotal={ytdDividendTotal}
       />
 
       {/* Tab Navigation */}
