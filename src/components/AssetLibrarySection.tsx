@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import AssetLibraryList from "./AssetLibraryList";
+import AddInvestmentModal from "./AddInvestmentModal";
 import { Asset, getAssets, GetAssetsInput } from "@/app/investments/actions";
 import { AssetType } from "@/generated/prisma/enums";
 
@@ -17,6 +18,7 @@ export default function AssetLibrarySection({
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<AssetType | "ALL">("ALL");
   const [isLoading, setIsLoading] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
   const router = useRouter();
 
   const fetchAssets = useCallback(async () => {
@@ -54,8 +56,23 @@ export default function AssetLibrarySection({
     router.refresh();
   };
 
+  const handleAddSuccess = () => {
+    setShowAddModal(false);
+    handleRefresh();
+  };
+
   return (
     <div className="space-y-6">
+      {/* Add Investment Button */}
+      <div className="flex justify-end">
+        <button
+          onClick={() => setShowAddModal(true)}
+          className="px-4 py-3 text-sm text-[#fafafa] bg-[#171717] hover:bg-[#404040] min-h-[44px]"
+        >
+          + add investment
+        </button>
+      </div>
+
       <div className="flex flex-col gap-4">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
           <span className="text-sm text-[#737373]">asset library</span>
@@ -127,6 +144,15 @@ export default function AssetLibrarySection({
         </div>
       ) : (
         <AssetLibraryList assets={assets} onRefresh={handleRefresh} />
+      )}
+
+      {/* Add Investment Modal */}
+      {showAddModal && (
+        <AddInvestmentModal
+          initialAssets={assets}
+          onClose={() => setShowAddModal(false)}
+          onSuccess={handleAddSuccess}
+        />
       )}
     </div>
   );
