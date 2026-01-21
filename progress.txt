@@ -261,3 +261,18 @@ Started: Wed Jan 21 00:10:20 -03 2026
   - Pencil icon button appears next to manual prices for quick update access
   - setManualPrice validates that asset is a custom asset owned by the user before allowing price updates
 ---
+
+## 2026-01-21 - US-INV-016
+- What was implemented: Daily Portfolio Snapshots feature - capture and store portfolio state
+- Files changed:
+  - src/app/investments/actions.ts - Added capturePortfolioSnapshot, getPortfolioSnapshots, getLatestSnapshot server actions
+  - src/app/api/cron/snapshots/route.ts - New API endpoint for scheduled daily snapshot capture
+- **Learnings for future iterations:**
+  - PortfolioSnapshot stores: totalValue, costBasis, cryptoValue, stockValue, holdings (JSON)
+  - holdings JSON field stores HoldingSnapshot[] with per-symbol aggregated data
+  - capturePortfolioSnapshot normalizes date to start of day to ensure only one snapshot per day
+  - Cron endpoint at POST /api/cron/snapshots processes all users with investments
+  - Security: Use CRON_SECRET env var for authorized cron calls (Bearer token)
+  - Prisma Json field requires `as unknown as HoldingSnapshot[]` for reading and `as any` for writing
+  - Snapshot includes both API-fetched prices (from PriceCache) and handles missing prices gracefully
+---
