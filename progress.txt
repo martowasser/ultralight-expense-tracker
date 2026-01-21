@@ -373,3 +373,19 @@ Started: Wed Jan 21 00:10:20 -03 2026
   - Green color (#22c55e) used for dividend amounts to indicate income/positive values
   - TypeBreakdown subcomponent conditionally displays only types with amounts > 0
 ---
+
+## 2026-01-21 - US-INV-023
+- What was implemented: Dividend Yield feature - display yield percentage on holdings with dividends
+- Files changed:
+  - src/app/investments/actions.ts - Added getHoldingDividendYields server action with HoldingDividendYield type
+  - src/components/AssetLibrarySection.tsx - Added dividendYields state and fetch logic after price updates
+  - src/components/HoldingsView.tsx - Added Yield column to table, yield display in mobile cards, yieldMap for lookup
+- **Learnings for future iterations:**
+  - Dividend yield formula: (Annual Dividends / Current Value) × 100
+  - Annual dividends calculated from dividends in the last 12 months (not calendar year)
+  - getHoldingDividendYields aggregates dividends by symbol, gets current holdings and prices
+  - yieldMap created via useMemo for O(1) lookup by symbol during holdings aggregation
+  - Yield only displayed for holdings that have received dividends (uses yieldMap.has() check)
+  - Purple color (text-purple-700, bg-purple-50) used to distinguish yield from other metrics
+  - Yields fetched after prices update since yield calculation depends on current prices
+---
