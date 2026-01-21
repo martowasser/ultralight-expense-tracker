@@ -27,3 +27,20 @@ Started: Wed Jan 21 00:10:20 -03 2026
   - Investment model supports lot tracking with separate purchases of same asset
   - PriceCache uses symbol as primary key for efficient lookups
 ---
+
+## 2026-01-21 - US-INV-001
+- What was implemented: Browse Asset Library feature
+- Files changed:
+  - src/app/investments/actions.ts - Server actions for getAssets (with search/filter) and getAssetById
+  - src/app/investments/page.tsx - Main investments page (server component)
+  - src/components/AssetLibrarySection.tsx - Client component with search/filter controls
+  - src/components/AssetLibraryList.tsx - Display component for assets grouped by type
+  - src/components/Header.tsx - Added "investments" link to navigation
+- **Learnings for future iterations:**
+  - Investment module routes are at /investments
+  - Assets are fetched with both global (isGlobal: true) and user-specific (userId) options
+  - Type filter uses AssetType enum: CRYPTO, STOCK, ETF
+  - Search is case-insensitive and matches both symbol and name
+  - Debounced search (300ms) for better UX
+  - Assets grouped by type in display, with type order: CRYPTO, STOCK, ETF
+---

@@ -16,7 +16,7 @@
         "Typecheck passes"
       ],
       "priority": 0,
-      "passes": false,
+      "passes": true,
       "notes": "Foundation - must be completed first as other features depend on asset library"
     },
     {
