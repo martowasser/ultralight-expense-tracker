@@ -21,6 +21,7 @@ export default function Header({ userEmail }: HeaderProps) {
     { href: "/dashboard", label: "expenses" },
     { href: "/institutions", label: "institutions" },
     { href: "/credit-cards", label: "cards" },
+    { href: "/investments", label: "investments" },
     { href: "/settings", label: "settings" },
   ];
 
