@@ -9,6 +9,12 @@ import {
   SUPPORTED_CURRENCIES,
   ExchangeRateMap,
 } from "@/lib/exchangeRateService";
+import {
+  searchCatalogAssets as searchCatalogAssetsFromService,
+  validateAndAddStock as validateAndAddStockFromService,
+  getCatalogAsset,
+  getCatalogLastSyncTime as getCatalogLastSyncTimeFromService,
+} from "@/lib/assetCatalogService";
 
 // ==========================================
 // Asset Library Types
@@ -23,6 +29,7 @@ export interface Asset {
   isActive: boolean;
   isGlobal: boolean;
   userId: string | null;
+  catalogRef: string | null;
   createdAt: Date;
 }
 
@@ -110,6 +117,7 @@ export async function getAssets(input?: GetAssetsInput): Promise<GetAssetsResult
         isActive: asset.isActive,
         isGlobal: asset.isGlobal,
         userId: asset.userId,
+        catalogRef: asset.catalogRef,
         createdAt: asset.createdAt,
       })),
     };
@@ -134,6 +142,7 @@ export interface CreateCustomAssetResult {
   success: boolean;
   error?: string;
   asset?: Asset;
+  warning?: string;
 }
 
 // ==========================================
@@ -229,8 +238,10 @@ export async function createCustomAsset(input: CreateCustomAssetInput): Promise<
         isActive: asset.isActive,
         isGlobal: asset.isGlobal,
         userId: asset.userId,
+        catalogRef: asset.catalogRef,
         createdAt: asset.createdAt,
       },
+      warning: "Custom assets won't have automatic price updates. You'll need to enter prices manually.",
     };
   } catch (error) {
     console.error("Error creating custom asset:", error);
@@ -278,6 +289,7 @@ export async function getAssetById(assetId: string): Promise<{ success: boolean;
         isActive: asset.isActive,
         isGlobal: asset.isGlobal,
         userId: asset.userId,
+        catalogRef: asset.catalogRef,
         createdAt: asset.createdAt,
       },
     };
@@ -373,6 +385,7 @@ export async function getInvestments(): Promise<GetInvestmentsResult> {
           isActive: inv.asset.isActive,
           isGlobal: inv.asset.isGlobal,
           userId: inv.asset.userId,
+          catalogRef: inv.asset.catalogRef,
           createdAt: inv.asset.createdAt,
         },
       })),
@@ -488,6 +501,7 @@ export async function createInvestment(input: CreateInvestmentInput): Promise<Cr
           isActive: investment.asset.isActive,
           isGlobal: investment.asset.isGlobal,
           userId: investment.asset.userId,
+          catalogRef: investment.asset.catalogRef,
           createdAt: investment.asset.createdAt,
         },
       },
@@ -629,6 +643,7 @@ export async function updateInvestment(input: UpdateInvestmentInput): Promise<Up
           isActive: investment.asset.isActive,
           isGlobal: investment.asset.isGlobal,
           userId: investment.asset.userId,
+          catalogRef: investment.asset.catalogRef,
           createdAt: investment.asset.createdAt,
         },
       },
@@ -718,6 +733,7 @@ export async function checkInvestmentForDeletion(investmentId: string): Promise<
           isActive: investment.asset.isActive,
           isGlobal: investment.asset.isGlobal,
           userId: investment.asset.userId,
+          catalogRef: investment.asset.catalogRef,
           createdAt: investment.asset.createdAt,
         },
       },
@@ -1220,6 +1236,7 @@ export async function getCustomAssetsWithPrices(): Promise<GetCustomAssetsWithPr
         isActive: asset.isActive,
         isGlobal: asset.isGlobal,
         userId: asset.userId,
+        catalogRef: asset.catalogRef,
         createdAt: asset.createdAt,
         manualPrice: price
           ? {
@@ -2174,6 +2191,7 @@ export async function getDividends(input?: GetDividendsInput): Promise<GetDivide
             isActive: div.investment.asset.isActive,
             isGlobal: div.investment.asset.isGlobal,
             userId: div.investment.asset.userId,
+            catalogRef: div.investment.asset.catalogRef,
             createdAt: div.investment.asset.createdAt,
           },
         },
@@ -2588,9 +2606,10 @@ export async function updateDisplayCurrency(currency: Currency): Promise<UpdateD
   }
 
   // Validate currency is a valid enum value
-  const validCurrencies = ["USD", "EUR", "GBP", "JPY", "CAD", "AUD", "CHF", "CNY", "ARS", "BRL"];
-  if (!validCurrencies.includes(currency)) {
-    return { success: false, error: "Invalid currency" };
+  // Only allow currencies supported by the exchange rate API (Frankfurter/ECB data)
+  const validDisplayCurrencies = ["USD", "EUR", "GBP", "JPY", "CAD", "AUD", "CHF", "BRL"];
+  if (!validDisplayCurrencies.includes(currency)) {
+    return { success: false, error: "Invalid currency for display. CNY and ARS are not supported for portfolio display." };
   }
 
   try {
@@ -2784,6 +2803,7 @@ export async function createDividend(input: CreateDividendInput): Promise<Create
             isActive: dividend.investment.asset.isActive,
             isGlobal: dividend.investment.asset.isGlobal,
             userId: dividend.investment.asset.userId,
+            catalogRef: dividend.investment.asset.catalogRef,
             createdAt: dividend.investment.asset.createdAt,
           },
         },
@@ -3212,5 +3232,306 @@ export async function getPortfolioExchangeRates(
   } catch (error) {
     console.error("Error getting portfolio exchange rates:", error);
     return { success: false, error: "Failed to get exchange rates" };
+  }
+}
+
+// ==========================================
+// Asset Catalog Types
+// ==========================================
+
+// Re-define CatalogAsset for server action export compatibility
+export interface CatalogAsset {
+  symbol: string;
+  name: string;
+  type: AssetType;
+  precision: number;
+  source: string;
+  sourceId?: string | null;
+  isAvailable: boolean;
+  lastVerified: Date;
+  marketCap?: number | null;
+  volume24h?: number | null;
+}
+
+export interface SearchCatalogAssetsInput {
+  search?: string;
+  type?: AssetType;
+  page?: number;
+  limit?: number;
+}
+
+export interface SearchCatalogAssetsResult {
+  success: boolean;
+  error?: string;
+  assets?: CatalogAsset[];
+  totalCount?: number;
+}
+
+export interface ValidateAndAddStockResult {
+  success: boolean;
+  error?: string;
+  asset?: CatalogAsset;
+}
+
+export interface CreateInvestmentFromCatalogInput {
+  catalogSymbol: string;
+  quantity: string;
+  purchasePrice: string;
+  purchaseCurrency: Currency;
+  purchaseDate: string;
+  platform: string;
+  notes?: string;
+}
+
+export interface GetCatalogLastSyncTimeResult {
+  success: boolean;
+  error?: string;
+  lastSyncTime?: Date | null;
+}
+
+// ==========================================
+// Asset Catalog Actions
+// ==========================================
+
+/**
+ * Search the asset catalog for available assets
+ * Returns assets from Binance (crypto) and curated list (stocks/ETFs)
+ */
+export async function searchCatalogAssets(
+  input: SearchCatalogAssetsInput
+): Promise<SearchCatalogAssetsResult> {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  try {
+    const result = await searchCatalogAssetsFromService(input);
+
+    return {
+      success: true,
+      assets: result.assets,
+      totalCount: result.totalCount,
+    };
+  } catch (error) {
+    console.error("Error searching catalog assets:", error);
+    return { success: false, error: "Failed to search catalog assets" };
+  }
+}
+
+/**
+ * Validate a stock symbol and add it to the catalog if valid
+ * Used for stocks not in the curated list
+ */
+export async function validateAndAddStock(
+  symbol: string
+): Promise<ValidateAndAddStockResult> {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  if (!symbol || symbol.trim() === "") {
+    return { success: false, error: "Symbol is required" };
+  }
+
+  try {
+    const result = await validateAndAddStockFromService(symbol);
+
+    if (!result.success) {
+      return {
+        success: false,
+        error: result.error || "Failed to validate symbol",
+      };
+    }
+
+    return {
+      success: true,
+      asset: result.asset,
+    };
+  } catch (error) {
+    console.error("Error validating stock symbol:", error);
+    return { success: false, error: "Failed to validate stock symbol" };
+  }
+}
+
+/**
+ * Create an investment from a catalog asset
+ * Automatically creates/finds the Asset record linked to the catalog
+ */
+export async function createInvestmentFromCatalog(
+  input: CreateInvestmentFromCatalogInput
+): Promise<CreateInvestmentResult> {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  const {
+    catalogSymbol,
+    quantity,
+    purchasePrice,
+    purchaseCurrency,
+    purchaseDate,
+    platform,
+    notes,
+  } = input;
+
+  // Validate required fields
+  if (!catalogSymbol || catalogSymbol.trim() === "") {
+    return { success: false, error: "Asset is required" };
+  }
+
+  if (!quantity || quantity.trim() === "") {
+    return { success: false, error: "Quantity is required" };
+  }
+
+  const quantityNum = parseFloat(quantity);
+  if (isNaN(quantityNum) || quantityNum <= 0) {
+    return { success: false, error: "Quantity must be a positive number" };
+  }
+
+  if (!purchasePrice || purchasePrice.trim() === "") {
+    return { success: false, error: "Purchase price is required" };
+  }
+
+  const priceNum = parseFloat(purchasePrice);
+  if (isNaN(priceNum) || priceNum <= 0) {
+    return { success: false, error: "Purchase price must be a positive number" };
+  }
+
+  if (!purchaseDate) {
+    return { success: false, error: "Purchase date is required" };
+  }
+
+  if (!platform || platform.trim() === "") {
+    return { success: false, error: "Platform is required" };
+  }
+
+  try {
+    // Get the catalog asset
+    const catalogAsset = await getCatalogAsset(catalogSymbol);
+
+    if (!catalogAsset || !catalogAsset.isAvailable) {
+      return {
+        success: false,
+        error: "Asset not found in catalog or no longer available",
+      };
+    }
+
+    // Find or create the Asset record linked to this catalog entry
+    let asset = await prisma.asset.findFirst({
+      where: {
+        symbol: catalogAsset.symbol,
+        OR: [{ isGlobal: true }, { userId: session.user.id }],
+      },
+    });
+
+    if (!asset) {
+      // Create a global asset from the catalog
+      asset = await prisma.asset.create({
+        data: {
+          symbol: catalogAsset.symbol,
+          name: catalogAsset.name,
+          type: catalogAsset.type,
+          precision: catalogAsset.precision,
+          isActive: true,
+          isGlobal: true,
+          userId: null,
+          catalogRef: catalogAsset.symbol,
+        },
+      });
+    } else if (!asset.catalogRef) {
+      // Link existing asset to catalog if not already linked
+      asset = await prisma.asset.update({
+        where: { id: asset.id },
+        data: { catalogRef: catalogAsset.symbol },
+      });
+    }
+
+    // Validate quantity precision based on asset type
+    const decimalPlaces = quantity.includes(".")
+      ? quantity.split(".")[1].length
+      : 0;
+    if (decimalPlaces > asset.precision) {
+      return {
+        success: false,
+        error: `Quantity can have at most ${asset.precision} decimal places for ${asset.symbol}`,
+      };
+    }
+
+    // Create the investment
+    const investment = await prisma.investment.create({
+      data: {
+        userId: session.user.id,
+        assetId: asset.id,
+        quantity: quantityNum,
+        purchasePrice: priceNum,
+        purchaseCurrency,
+        purchaseDate: new Date(purchaseDate),
+        platform: platform.trim(),
+        notes: notes?.trim() || null,
+      },
+      include: {
+        asset: true,
+      },
+    });
+
+    return {
+      success: true,
+      investment: {
+        id: investment.id,
+        userId: investment.userId,
+        assetId: investment.assetId,
+        quantity: investment.quantity.toString(),
+        purchasePrice: investment.purchasePrice.toString(),
+        purchaseCurrency: investment.purchaseCurrency,
+        purchaseDate: investment.purchaseDate,
+        platform: investment.platform,
+        notes: investment.notes,
+        createdAt: investment.createdAt,
+        asset: {
+          id: investment.asset.id,
+          symbol: investment.asset.symbol,
+          name: investment.asset.name,
+          type: investment.asset.type,
+          precision: investment.asset.precision,
+          isActive: investment.asset.isActive,
+          isGlobal: investment.asset.isGlobal,
+          userId: investment.asset.userId,
+          catalogRef: investment.asset.catalogRef,
+          createdAt: investment.asset.createdAt,
+        },
+      },
+    };
+  } catch (error) {
+    console.error("Error creating investment from catalog:", error);
+    return { success: false, error: "Failed to create investment" };
+  }
+}
+
+/**
+ * Get the last sync time for the asset catalog
+ */
+export async function getCatalogLastSyncTime(): Promise<GetCatalogLastSyncTimeResult> {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  try {
+    const lastSyncTime = await getCatalogLastSyncTimeFromService();
+
+    return {
+      success: true,
+      lastSyncTime,
+    };
+  } catch (error) {
+    console.error("Error getting catalog last sync time:", error);
+    return { success: false, error: "Failed to get catalog sync time" };
   }
 }

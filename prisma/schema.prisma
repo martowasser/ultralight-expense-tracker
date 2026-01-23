@@ -228,6 +228,7 @@ model Asset {
   isActive    Boolean   @default(true)
   isGlobal    Boolean   @default(true)  // true for pre-populated assets, false for user-created
   userId      String?   // null for global assets, set for user-created custom assets
+  catalogRef  String?   // Reference to AssetCatalog.symbol for assets from catalog
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -237,6 +238,7 @@ model Asset {
   @@index([type])
   @@index([userId])
   @@index([symbol, isActive])
+  @@index([catalogRef])
 }
 
 model Investment {
@@ -323,4 +325,28 @@ model ExchangeRateCache {
   @@unique([baseCurrency, targetCurrency])
   @@index([baseCurrency])
   @@index([fetchedAt])
+}
+
+// ==========================================
+// Asset Catalog - Dynamic Asset Lists from APIs
+// ==========================================
+
+model AssetCatalog {
+  symbol        String    @id           // Asset symbol as primary key (e.g., BTC, AAPL)
+  name          String                  // Full name (e.g., Bitcoin, Apple Inc.)
+  type          AssetType               // CRYPTO, STOCK, ETF
+  precision     Int       @default(2)   // Decimal places for quantity
+  source        String                  // Data source: "binance", "yahoo", "curated"
+  sourceId      String?                 // External ID (e.g., CoinGecko ID for enrichment)
+  isAvailable   Boolean   @default(true) // Whether asset is currently tradeable/available
+  lastVerified  DateTime                // When the asset was last verified as available
+  marketCap     Decimal?  @db.Decimal(20, 2)  // Market capitalization (for sorting by popularity)
+  volume24h     Decimal?  @db.Decimal(20, 2)  // 24-hour trading volume
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([type])
+  @@index([isAvailable])
+  @@index([type, isAvailable])
+  @@index([marketCap])
 }

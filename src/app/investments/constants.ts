@@ -29,7 +29,7 @@ export const PLATFORMS = [
   "Other",
 ] as const;
 
-// Currencies supported for investments
+// Currencies supported for investments (input/recording)
 export const CURRENCIES: Currency[] = [
   "USD",
   "EUR",
@@ -40,6 +40,19 @@ export const CURRENCIES: Currency[] = [
   "CHF",
   "CNY",
   "ARS",
+  "BRL",
+];
+
+// Currencies supported for portfolio display (requires exchange rates from Frankfurter/ECB)
+// Note: CNY and ARS are not supported by ECB data
+export const DISPLAY_CURRENCIES: Currency[] = [
+  "USD",
+  "EUR",
+  "GBP",
+  "JPY",
+  "CAD",
+  "AUD",
+  "CHF",
   "BRL",
 ];
 

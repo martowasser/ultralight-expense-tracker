@@ -1,13 +1,15 @@
 /**
  * Exchange Rate Service - Fetches currency exchange rates from external APIs
  *
- * Primary API: ExchangeRate.host (free, no key required)
+ * Primary API: Frankfurter.app (free, no key required, ECB data)
  * Fallback API: Open Exchange Rates (requires OPEN_EXCHANGE_RATES_API_KEY env var)
  *
- * Supports 10 major currencies: USD, EUR, GBP, JPY, CAD, AUD, CHF, CNY, ARS, BRL
+ * Supports 8 major currencies: USD, EUR, GBP, JPY, CAD, AUD, CHF, BRL
  */
 
 // Supported currencies for the investments module
+// Note: Limited to currencies supported by Frankfurter.app (ECB data)
+// CNY and ARS are not supported by ECB
 export const SUPPORTED_CURRENCIES = [
   "USD",
   "EUR",
@@ -16,8 +18,6 @@ export const SUPPORTED_CURRENCIES = [
   "CAD",
   "AUD",
   "CHF",
-  "CNY",
-  "ARS",
   "BRL",
 ] as const;
 
@@ -44,26 +44,29 @@ export interface FetchExchangeRatesResult {
   errors: string[];
 }
 
-interface ExchangeRateHostResponse {
-  success: boolean;
+interface FrankfurterResponse {
+  amount: number;
   base: string;
   date: string;
   rates: Record<string, number>;
 }
 
 /**
- * Fetch exchange rates from ExchangeRate.host (primary API)
- * Free tier, no API key required, supports all major currencies
+ * Fetch exchange rates from Frankfurter.app (primary API)
+ * Free, no API key required, based on European Central Bank data
  */
-export async function fetchRatesFromExchangeRateHost(
+export async function fetchRatesFromFrankfurter(
   baseCurrency: string = "USD"
 ): Promise<FetchExchangeRatesResult> {
   const errors: string[] = [];
-  const symbols = SUPPORTED_CURRENCIES.join(",");
+
+  // Request all supported currencies except the base
+  const targetCurrencies = SUPPORTED_CURRENCIES.filter(c => c !== baseCurrency);
+  const symbols = targetCurrencies.join(",");
 
   try {
     const response = await fetch(
-      `https://api.exchangerate.host/latest?base=${baseCurrency}&symbols=${symbols}`,
+      `https://api.frankfurter.app/latest?from=${baseCurrency}&to=${symbols}`,
       {
         headers: { Accept: "application/json" },
         next: { revalidate: 0 }, // Don't cache this fetch
@@ -71,38 +74,42 @@ export async function fetchRatesFromExchangeRateHost(
     );
 
     if (!response.ok) {
-      throw new Error(`ExchangeRate.host API error: ${response.status}`);
+      throw new Error(`Frankfurter API error: ${response.status}`);
     }
 
-    const data: ExchangeRateHostResponse = await response.json();
+    const data: FrankfurterResponse = await response.json();
 
-    if (!data.success) {
-      throw new Error("ExchangeRate.host returned success: false");
+    if (!data.rates || Object.keys(data.rates).length === 0) {
+      throw new Error("Frankfurter returned no rates");
     }
+
+    // Add the base currency with rate 1
+    const rates: Record<string, number> = { ...data.rates };
+    rates[baseCurrency] = 1;
 
     console.log(
-      `ExchangeRate.host: Successfully fetched ${Object.keys(data.rates).length} rates for base ${baseCurrency}`
+      `Frankfurter: Successfully fetched ${Object.keys(rates).length} rates for base ${baseCurrency}`
     );
 
     return {
       success: true,
       baseCurrency: data.base,
-      rates: data.rates,
-      source: "exchangerate.host",
+      rates,
+      source: "frankfurter",
       fetchedAt: new Date(),
       errors: [],
     };
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
-    console.error("ExchangeRate.host API error:", errorMessage);
-    errors.push(`ExchangeRate.host: ${errorMessage}`);
+    console.error("Frankfurter API error:", errorMessage);
+    errors.push(`Frankfurter: ${errorMessage}`);
 
     return {
       success: false,
       baseCurrency,
       rates: {},
-      source: "exchangerate.host",
+      source: "frankfurter",
       fetchedAt: new Date(),
       errors,
     };
@@ -216,16 +223,16 @@ export async function fetchRatesFromOpenExchangeRates(
 
 /**
  * Fetch exchange rates with automatic failover
- * Tries ExchangeRate.host first, falls back to Open Exchange Rates on failure
+ * Tries Frankfurter.app first, falls back to Open Exchange Rates on failure
  */
 export async function fetchExchangeRates(
   baseCurrency: string = "USD"
 ): Promise<FetchExchangeRatesResult> {
-  // Try primary source (ExchangeRate.host) first
+  // Try primary source (Frankfurter.app) first
   console.log(
-    `Fetching exchange rates from ExchangeRate.host for base ${baseCurrency}`
+    `Fetching exchange rates from Frankfurter for base ${baseCurrency}`
   );
-  const primaryResult = await fetchRatesFromExchangeRateHost(baseCurrency);
+  const primaryResult = await fetchRatesFromFrankfurter(baseCurrency);
 
   if (primaryResult.success && Object.keys(primaryResult.rates).length > 0) {
     return primaryResult;
@@ -233,7 +240,7 @@ export async function fetchExchangeRates(
 
   // Primary failed, try fallback (Open Exchange Rates)
   console.log(
-    `ExchangeRate.host failed, trying Open Exchange Rates fallback`
+    `Frankfurter failed, trying Open Exchange Rates fallback`
   );
   const fallbackResult =
     await fetchRatesFromOpenExchangeRates(baseCurrency);

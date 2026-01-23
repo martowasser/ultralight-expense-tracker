@@ -12,7 +12,7 @@ import PortfolioDashboard from "./PortfolioDashboard";
 import HistoryTab from "./HistoryTab";
 import DividendsTab from "./DividendsTab";
 import UserCurrencySettings from "./UserCurrencySettings";
-import { Asset, Investment, CachedPrice, HoldingDividendYield, UserSettings, CurrencyConversionRates, getAssets, getInvestments, GetAssetsInput, fetchAssetPrices, clearPriceCache, getHoldingDividendYields, getUserSettings, getPortfolioExchangeRates, updateDisplayCurrency, getDividendSummary } from "@/app/investments/actions";
+import { Asset, Investment, CachedPrice, HoldingDividendYield, UserSettings, CurrencyConversionRates, getAssets, getInvestments, GetAssetsInput, fetchAssetPrices, clearPriceCache, getHoldingDividendYields, getUserSettings, getPortfolioExchangeRates, updateDisplayCurrency, getDividendSummary, getCatalogLastSyncTime } from "@/app/investments/actions";
 import { AssetType, Currency } from "@/generated/prisma/enums";
 
 type TabType = "holdings" | "history" | "dividends";
@@ -49,6 +49,7 @@ export default function AssetLibrarySection({
   const [editingInvestment, setEditingInvestment] = useState<Investment | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>("holdings");
   const [displayCurrency, setDisplayCurrency] = useState<Currency>("USD");
+  const [catalogLastSync, setCatalogLastSync] = useState<Date | null>(null);
   const router = useRouter();
 
   // Fetch exchange rates for the display currency
@@ -71,6 +72,17 @@ export default function AssetLibrarySection({
     };
     fetchUserSettings();
   }, [fetchExchangeRatesData]);
+
+  // Fetch catalog last sync time
+  useEffect(() => {
+    const fetchCatalogSync = async () => {
+      const result = await getCatalogLastSyncTime();
+      if (result.success) {
+        setCatalogLastSync(result.lastSyncTime ?? null);
+      }
+    };
+    fetchCatalogSync();
+  }, []);
 
   const handleSettingsChange = (settings: UserSettings) => {
     setDisplayCurrency(settings.displayCurrency);
@@ -430,7 +442,14 @@ export default function AssetLibrarySection({
         <>
           <div className="flex flex-col gap-4">
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-              <span className="text-sm text-[#737373]">asset library</span>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-sm text-[#737373]">asset library</span>
+                {catalogLastSync && (
+                  <span className="text-xs text-[#a3a3a3]">
+                    catalog synced {formatLastUpdated(catalogLastSync)}
+                  </span>
+                )}
+              </div>
               <button
                 onClick={() => setShowCreateAssetModal(true)}
                 className="text-sm text-[#737373] hover:text-[#171717] underline"

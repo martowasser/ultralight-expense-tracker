@@ -3,11 +3,14 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Asset,
-  getAssets,
+  CatalogAsset,
+  searchCatalogAssets,
+  createInvestmentFromCatalog,
   createInvestment,
+  validateAndAddStock,
 } from "@/app/investments/actions";
 import { PLATFORMS, CURRENCIES } from "@/app/investments/constants";
-import { Currency } from "@/generated/prisma/enums";
+import { Currency, AssetType } from "@/generated/prisma/enums";
 
 interface AddInvestmentModalProps {
   initialAssets: Asset[];
@@ -15,17 +18,32 @@ interface AddInvestmentModalProps {
   onSuccess: () => void;
 }
 
+type AssetTab = "CRYPTO" | "STOCK" | "ETF" | "CUSTOM";
+
 export default function AddInvestmentModal({
   initialAssets,
   onClose,
   onSuccess,
 }: AddInvestmentModalProps) {
-  // Asset selection state
-  const [assets, setAssets] = useState<Asset[]>(initialAssets);
+  // Tab state
+  const [activeTab, setActiveTab] = useState<AssetTab>("CRYPTO");
+
+  // Catalog asset selection state
+  const [catalogAssets, setCatalogAssets] = useState<CatalogAsset[]>([]);
+  const [selectedCatalogAsset, setSelectedCatalogAsset] = useState<CatalogAsset | null>(null);
   const [assetSearch, setAssetSearch] = useState("");
-  const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [showAssetDropdown, setShowAssetDropdown] = useState(false);
   const [isLoadingAssets, setIsLoadingAssets] = useState(false);
+
+  // Custom asset selection state
+  const [customAssets] = useState<Asset[]>(
+    initialAssets.filter((a) => !a.catalogRef && !a.isGlobal)
+  );
+  const [selectedCustomAsset, setSelectedCustomAsset] = useState<Asset | null>(null);
+
+  // Symbol validation state
+  const [isValidatingSymbol, setIsValidatingSymbol] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   // Form fields
   const [quantity, setQuantity] = useState("");
@@ -42,27 +60,36 @@ export default function AddInvestmentModal({
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Fetch assets when search changes
-  const fetchAssets = useCallback(async () => {
+  // Get the selected asset (either catalog or custom)
+  const selectedAsset = activeTab === "CUSTOM" ? selectedCustomAsset : selectedCatalogAsset;
+
+  // Fetch catalog assets when search or tab changes
+  const fetchCatalogAssets = useCallback(async () => {
+    if (activeTab === "CUSTOM") return;
+
     setIsLoadingAssets(true);
-    const result = await getAssets({
+    setValidationError(null);
+
+    const result = await searchCatalogAssets({
       search: assetSearch.trim() || undefined,
+      type: activeTab as AssetType,
+      limit: 50,
     });
+
     if (result.success && result.assets) {
-      setAssets(result.assets);
+      setCatalogAssets(result.assets);
     }
+
     setIsLoadingAssets(false);
-  }, [assetSearch]);
+  }, [assetSearch, activeTab]);
 
   // Debounced search
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      if (assetSearch.trim() || assets.length === 0) {
-        fetchAssets();
-      }
+      fetchCatalogAssets();
     }, 300);
     return () => clearTimeout(timeoutId);
-  }, [assetSearch, fetchAssets, assets.length]);
+  }, [fetchCatalogAssets]);
 
   // Calculate total cost
   const totalCost = useMemo(() => {
@@ -76,16 +103,55 @@ export default function AddInvestmentModal({
 
   // Get quantity step based on asset precision
   const quantityStep = useMemo(() => {
-    if (selectedAsset) {
-      return Math.pow(10, -selectedAsset.precision).toString();
-    }
-    return "0.000001";
+    const precision = selectedAsset
+      ? "precision" in selectedAsset
+        ? selectedAsset.precision
+        : 6
+      : 6;
+    return Math.pow(10, -precision).toString();
   }, [selectedAsset]);
 
-  const handleAssetSelect = (asset: Asset) => {
-    setSelectedAsset(asset);
+  // Handle tab change
+  const handleTabChange = (tab: AssetTab) => {
+    setActiveTab(tab);
+    setSelectedCatalogAsset(null);
+    setSelectedCustomAsset(null);
+    setAssetSearch("");
+    setValidationError(null);
+  };
+
+  // Handle catalog asset selection
+  const handleCatalogAssetSelect = (asset: CatalogAsset) => {
+    setSelectedCatalogAsset(asset);
     setAssetSearch(asset.symbol);
     setShowAssetDropdown(false);
+    setValidationError(null);
+  };
+
+  // Handle custom asset selection
+  const handleCustomAssetSelect = (asset: Asset) => {
+    setSelectedCustomAsset(asset);
+    setShowAssetDropdown(false);
+  };
+
+  // Handle symbol validation for stocks not in catalog
+  const handleValidateSymbol = async () => {
+    if (!assetSearch.trim()) return;
+
+    setIsValidatingSymbol(true);
+    setValidationError(null);
+
+    const result = await validateAndAddStock(assetSearch.trim());
+
+    if (result.success && result.asset) {
+      setSelectedCatalogAsset(result.asset);
+      setCatalogAssets([result.asset, ...catalogAssets]);
+      setShowAssetDropdown(false);
+    } else {
+      setValidationError(result.error || "Symbol not found");
+    }
+
+    setIsValidatingSymbol(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -106,15 +172,35 @@ export default function AddInvestmentModal({
     setIsSubmitting(true);
 
     try {
-      const result = await createInvestment({
-        assetId: selectedAsset.id,
-        quantity,
-        purchasePrice,
-        purchaseCurrency,
-        purchaseDate,
-        platform: effectivePlatform.trim(),
-        notes: notes.trim() || undefined,
-      });
+      let result;
+
+      if (activeTab === "CUSTOM" && selectedCustomAsset) {
+        // Create from existing asset
+        result = await createInvestment({
+          assetId: selectedCustomAsset.id,
+          quantity,
+          purchasePrice,
+          purchaseCurrency,
+          purchaseDate,
+          platform: effectivePlatform.trim(),
+          notes: notes.trim() || undefined,
+        });
+      } else if (selectedCatalogAsset) {
+        // Create from catalog
+        result = await createInvestmentFromCatalog({
+          catalogSymbol: selectedCatalogAsset.symbol,
+          quantity,
+          purchasePrice,
+          purchaseCurrency,
+          purchaseDate,
+          platform: effectivePlatform.trim(),
+          notes: notes.trim() || undefined,
+        });
+      } else {
+        setError("please select an asset");
+        setIsSubmitting(false);
+        return;
+      }
 
       if (!result.success) {
         setError(result.error || "failed to create investment");
@@ -129,22 +215,22 @@ export default function AddInvestmentModal({
     }
   };
 
-  // Filter assets based on search
-  const filteredAssets = useMemo(() => {
+  // Filter catalog assets based on search
+  const filteredCatalogAssets = useMemo(() => {
     if (!assetSearch.trim()) {
-      return assets;
+      return catalogAssets;
     }
     const search = assetSearch.toLowerCase();
-    return assets.filter(
+    return catalogAssets.filter(
       (a) =>
         a.symbol.toLowerCase().includes(search) ||
         a.name.toLowerCase().includes(search)
     );
-  }, [assets, assetSearch]);
+  }, [catalogAssets, assetSearch]);
 
   return (
     <div className="fixed inset-0 bg-black/30 flex items-end sm:items-center justify-center z-50">
-      <div className="bg-[#fafafa] w-full sm:max-w-[480px] sm:mx-4 max-h-[90vh] overflow-y-auto">
+      <div className="bg-[#fafafa] w-full sm:max-w-[520px] sm:mx-4 max-h-[90vh] overflow-y-auto">
         <div className="px-6 py-4 border-b border-[#e5e5e5]">
           <h2 className="text-sm text-[#171717]">add investment</h2>
         </div>
@@ -152,70 +238,197 @@ export default function AddInvestmentModal({
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {error && <p className="text-sm text-[#737373]">{error}</p>}
 
+          {/* Asset Type Tabs */}
+          <div className="space-y-3">
+            <label className="block text-sm text-[#737373]">
+              asset type
+            </label>
+            <div className="flex gap-1">
+              <button
+                type="button"
+                onClick={() => handleTabChange("CRYPTO")}
+                disabled={isSubmitting}
+                className={`flex-1 px-3 py-2 text-sm min-h-[44px] border ${
+                  activeTab === "CRYPTO"
+                    ? "bg-[#171717] text-[#fafafa] border-[#171717]"
+                    : "bg-white text-[#737373] border-[#e5e5e5] hover:text-[#171717]"
+                } disabled:opacity-50`}
+              >
+                crypto
+              </button>
+              <button
+                type="button"
+                onClick={() => handleTabChange("STOCK")}
+                disabled={isSubmitting}
+                className={`flex-1 px-3 py-2 text-sm min-h-[44px] border ${
+                  activeTab === "STOCK"
+                    ? "bg-[#171717] text-[#fafafa] border-[#171717]"
+                    : "bg-white text-[#737373] border-[#e5e5e5] hover:text-[#171717]"
+                } disabled:opacity-50`}
+              >
+                stocks
+              </button>
+              <button
+                type="button"
+                onClick={() => handleTabChange("ETF")}
+                disabled={isSubmitting}
+                className={`flex-1 px-3 py-2 text-sm min-h-[44px] border ${
+                  activeTab === "ETF"
+                    ? "bg-[#171717] text-[#fafafa] border-[#171717]"
+                    : "bg-white text-[#737373] border-[#e5e5e5] hover:text-[#171717]"
+                } disabled:opacity-50`}
+              >
+                etfs
+              </button>
+              {customAssets.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => handleTabChange("CUSTOM")}
+                  disabled={isSubmitting}
+                  className={`flex-1 px-3 py-2 text-sm min-h-[44px] border ${
+                    activeTab === "CUSTOM"
+                      ? "bg-[#171717] text-[#fafafa] border-[#171717]"
+                      : "bg-white text-[#737373] border-[#e5e5e5] hover:text-[#171717]"
+                  } disabled:opacity-50`}
+                >
+                  custom
+                </button>
+              )}
+            </div>
+          </div>
+
           {/* Asset Selection */}
           <div className="space-y-1">
             <label htmlFor="asset" className="block text-sm text-[#737373]">
               asset <span className="text-[#a3a3a3]">*</span>
             </label>
-            <div className="relative">
-              <input
-                type="text"
-                id="asset"
-                value={assetSearch}
-                onChange={(e) => {
-                  setAssetSearch(e.target.value);
-                  setShowAssetDropdown(true);
-                  if (selectedAsset && e.target.value !== selectedAsset.symbol) {
-                    setSelectedAsset(null);
-                  }
-                }}
-                onFocus={() => setShowAssetDropdown(true)}
-                className="w-full px-3 py-3 text-base text-[#171717] bg-white border border-[#e5e5e5] focus:border-[#171717] focus:outline-none"
-                placeholder="search by symbol or name..."
-                disabled={isSubmitting}
-                autoComplete="off"
-              />
-              {selectedAsset && (
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#737373]">
-                  {selectedAsset.name}
-                </div>
-              )}
 
-              {/* Asset Dropdown */}
-              {showAssetDropdown && !selectedAsset && (
-                <div className="absolute z-10 w-full mt-1 bg-white border border-[#e5e5e5] max-h-[200px] overflow-y-auto shadow-lg">
-                  {isLoadingAssets ? (
-                    <div className="px-3 py-2 text-sm text-[#a3a3a3]">
-                      loading...
-                    </div>
-                  ) : filteredAssets.length === 0 ? (
-                    <div className="px-3 py-2 text-sm text-[#a3a3a3]">
-                      no assets found
-                    </div>
-                  ) : (
-                    filteredAssets.slice(0, 10).map((asset) => (
-                      <button
-                        key={asset.id}
-                        type="button"
-                        onClick={() => handleAssetSelect(asset)}
-                        className="w-full px-3 py-2 text-left hover:bg-[#f5f5f5] flex justify-between items-center"
-                      >
-                        <span className="text-sm text-[#171717]">
-                          {asset.symbol}
-                        </span>
-                        <span className="text-xs text-[#737373]">
-                          {asset.name}
-                        </span>
-                      </button>
-                    ))
-                  )}
-                </div>
-              )}
-            </div>
+            {activeTab === "CUSTOM" ? (
+              /* Custom Asset Dropdown */
+              <div className="relative">
+                <select
+                  id="asset"
+                  value={selectedCustomAsset?.id || ""}
+                  onChange={(e) => {
+                    const asset = customAssets.find((a) => a.id === e.target.value);
+                    setSelectedCustomAsset(asset || null);
+                  }}
+                  className="w-full px-3 py-3 text-base text-[#171717] bg-white border border-[#e5e5e5] focus:border-[#171717] focus:outline-none"
+                  disabled={isSubmitting}
+                >
+                  <option value="">select custom asset</option>
+                  {customAssets.map((asset) => (
+                    <option key={asset.id} value={asset.id}>
+                      {asset.symbol} - {asset.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              /* Catalog Asset Search */
+              <div className="relative">
+                <input
+                  type="text"
+                  id="asset"
+                  value={assetSearch}
+                  onChange={(e) => {
+                    setAssetSearch(e.target.value);
+                    setShowAssetDropdown(true);
+                    if (selectedCatalogAsset && e.target.value !== selectedCatalogAsset.symbol) {
+                      setSelectedCatalogAsset(null);
+                    }
+                  }}
+                  onFocus={() => setShowAssetDropdown(true)}
+                  className="w-full px-3 py-3 text-base text-[#171717] bg-white border border-[#e5e5e5] focus:border-[#171717] focus:outline-none"
+                  placeholder={`search ${activeTab.toLowerCase()} by symbol or name...`}
+                  disabled={isSubmitting}
+                  autoComplete="off"
+                />
+                {selectedCatalogAsset && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#737373] max-w-[200px] truncate">
+                    {selectedCatalogAsset.name}
+                  </div>
+                )}
+
+                {/* Asset Dropdown */}
+                {showAssetDropdown && !selectedCatalogAsset && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-[#e5e5e5] max-h-[250px] overflow-y-auto shadow-lg">
+                    {isLoadingAssets ? (
+                      <div className="px-3 py-2 text-sm text-[#a3a3a3]">
+                        loading...
+                      </div>
+                    ) : filteredCatalogAssets.length === 0 ? (
+                      <div className="p-3">
+                        <p className="text-sm text-[#a3a3a3] mb-2">
+                          no assets found
+                        </p>
+                        {activeTab !== "CRYPTO" && assetSearch.trim() && (
+                          <button
+                            type="button"
+                            onClick={handleValidateSymbol}
+                            disabled={isValidatingSymbol}
+                            className="text-sm text-[#171717] underline hover:no-underline"
+                          >
+                            {isValidatingSymbol ? "validating..." : `validate "${assetSearch.toUpperCase()}"`}
+                          </button>
+                        )}
+                        {validationError && (
+                          <p className="text-xs text-red-500 mt-1">{validationError}</p>
+                        )}
+                      </div>
+                    ) : (
+                      <>
+                        {filteredCatalogAssets.slice(0, 15).map((asset) => (
+                          <button
+                            key={asset.symbol}
+                            type="button"
+                            onClick={() => handleCatalogAssetSelect(asset)}
+                            className="w-full px-3 py-2 text-left hover:bg-[#f5f5f5] flex justify-between items-center gap-2"
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium text-[#171717]">
+                                {asset.symbol}
+                              </span>
+                              <span className="text-xs text-[#a3a3a3] px-1.5 py-0.5 bg-[#f5f5f5]">
+                                {asset.source}
+                              </span>
+                            </div>
+                            <span className="text-xs text-[#737373] truncate max-w-[180px]">
+                              {asset.name}
+                            </span>
+                          </button>
+                        ))}
+                        {filteredCatalogAssets.length > 15 && (
+                          <div className="px-3 py-2 text-xs text-[#a3a3a3] border-t border-[#e5e5e5]">
+                            {filteredCatalogAssets.length - 15} more results...
+                          </div>
+                        )}
+                        {activeTab !== "CRYPTO" && assetSearch.trim() && (
+                          <div className="px-3 py-2 border-t border-[#e5e5e5]">
+                            <button
+                              type="button"
+                              onClick={handleValidateSymbol}
+                              disabled={isValidatingSymbol}
+                              className="text-xs text-[#737373] hover:text-[#171717]"
+                            >
+                              {isValidatingSymbol
+                                ? "validating..."
+                                : `can't find your asset? validate "${assetSearch.toUpperCase()}"`}
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             {selectedAsset && (
               <p className="text-xs text-[#a3a3a3]">
-                {selectedAsset.type.toLowerCase()} • precision:{" "}
-                {selectedAsset.precision} decimals
+                {activeTab === "CUSTOM"
+                  ? `${selectedCustomAsset?.type.toLowerCase()} • precision: ${selectedCustomAsset?.precision} decimals`
+                  : `${selectedCatalogAsset?.type.toLowerCase()} • precision: ${selectedCatalogAsset?.precision} decimals`}
               </p>
             )}
           </div>
@@ -234,16 +447,14 @@ export default function AddInvestmentModal({
               min="0"
               className="w-full px-3 py-3 text-base text-[#171717] bg-white border border-[#e5e5e5] focus:border-[#171717] focus:outline-none"
               placeholder={
-                selectedAsset?.precision === 6 ? "0.000001" : "0.00"
+                selectedAsset
+                  ? ("precision" in selectedAsset ? selectedAsset.precision : 6) === 6
+                    ? "0.000001"
+                    : "0.00"
+                  : "0.00"
               }
               disabled={isSubmitting}
             />
-            {selectedAsset && (
-              <p className="text-xs text-[#a3a3a3]">
-                max {selectedAsset.precision} decimal places for{" "}
-                {selectedAsset.type === "CRYPTO" ? "crypto" : "stocks/ETFs"}
-              </p>
-            )}
           </div>
 
           {/* Purchase Price */}
