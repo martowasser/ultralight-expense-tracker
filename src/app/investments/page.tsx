@@ -16,14 +16,21 @@ export default async function InvestmentsPage() {
     getInvestments(),
   ]);
 
-  const assets = assetsResult.success && assetsResult.assets ? assetsResult.assets : [];
-  const investments = investmentsResult.success && investmentsResult.investments ? investmentsResult.investments : [];
+  const assets =
+    assetsResult.success && assetsResult.assets ? assetsResult.assets : [];
+  const investments =
+    investmentsResult.success && investmentsResult.investments
+      ? investmentsResult.investments
+      : [];
 
   return (
     <div className="min-h-screen bg-[#fafafa]">
       <Header userEmail={session.user.email || ""} />
-      <main className="max-w-[640px] mx-auto px-6 py-8 space-y-8">
-        <AssetLibrarySection initialAssets={assets} initialInvestments={investments} />
+      <main className="max-w-[1200px] mx-auto px-6 py-8 space-y-8">
+        <AssetLibrarySection
+          initialAssets={assets}
+          initialInvestments={investments}
+        />
       </main>
     </div>
   );
